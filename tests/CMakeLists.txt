@@ -23,9 +23,10 @@ set(SSS_RANDOMBYTES_DIR ${SSS_REF_DIR}/randombytes)
 # ---------------------------------------------------------------------------
 # Source paths
 # ---------------------------------------------------------------------------
-set(SSS_SRC_DIR    ${CMAKE_CURRENT_SOURCE_DIR}/../src/sss)
-set(QRCODE_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../src/qrcode)
-set(SVG_SRC_DIR    ${CMAKE_CURRENT_SOURCE_DIR}/../src/svg)
+set(SSS_SRC_DIR         ${CMAKE_CURRENT_SOURCE_DIR}/../src/sss)
+set(QRCODE_SRC_DIR      ${CMAKE_CURRENT_SOURCE_DIR}/../src/qrcode)
+set(SVG_SRC_DIR         ${CMAKE_CURRENT_SOURCE_DIR}/../src/svg)
+set(COMPRESSION_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../src/compression)
 
 # ---------------------------------------------------------------------------
 # sss_test — Shamir + QR Code tests (combined executable)
@@ -50,6 +51,25 @@ target_include_directories(sss_test PRIVATE
 )
 
 target_link_libraries(sss_test PRIVATE
+    GTest::GTest
+    GTest::Main
+)
+
+# ---------------------------------------------------------------------------
+# base32_test — Base32 codec tests only (standalone executable)
+# Build with: cmake --build tests/build-native --target base32_test
+# ---------------------------------------------------------------------------
+add_executable(base32_test
+    main.cpp
+    test_base32.cpp
+    ${COMPRESSION_SRC_DIR}/base32.c           # Base32 codec
+)
+
+target_include_directories(base32_test PRIVATE
+    ${COMPRESSION_SRC_DIR}                       # for base32.h
+)
+
+target_link_libraries(base32_test PRIVATE
     GTest::GTest
     GTest::Main
 )
@@ -104,6 +124,9 @@ target_link_libraries(svg_test PRIVATE
 # Register tests with ctest
 # ---------------------------------------------------------------------------
 add_test(NAME sss_test COMMAND sss_test)
+
+# Launch the Base32 codec unit tests (Base32Test suite) via the dedicated binary.
+add_test(NAME base32_test COMMAND base32_test)
 
 # Launch the QR code unit tests (QRCodeTest suite) via the dedicated binary.
 add_test(NAME qrcode_test COMMAND qrcode_test)

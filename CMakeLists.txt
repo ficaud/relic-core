@@ -39,6 +39,7 @@ else()
       src/access-point/net/src/dhcp.c
       src/access-point/wifi/src/wifi_mgr.c
       src/sss/sss.c
+      src/compression/base32.c
       src/qrcode/qr_encode.c
       src/svg/qrcode_to_svg.c
   )
@@ -111,6 +112,7 @@ else()
       src/access-point/wifi/inc
       src/access-point/assets
       src/sss
+      src/compression
       src/qrcode
       src/svg
   )
