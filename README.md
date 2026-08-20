@@ -6,7 +6,8 @@
 <br/>
 <br/>
 
-# Relic Core
+# R.E.L.I.C
+<i>Recovery and Encryption via Lagrange Interpolated Components</i>
 
 [![Zephyr](https://img.shields.io/badge/zephyr-v4.4.2-4B32C3?logo=zephyr)](https://www.zephyrproject.org/)
 [![Build](https://github.com/ficaud/relic-core/actions/workflows/build.yml/badge.svg)](https://github.com/ficaud/relic-core/actions/workflows/build.yml)
