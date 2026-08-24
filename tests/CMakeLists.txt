@@ -75,6 +75,27 @@ target_link_libraries(base32_test PRIVATE
 )
 
 # ---------------------------------------------------------------------------
+# share_base32_test — Share "x:hex <-> x:base32" codec tests (standalone)
+# Build with: cmake --build tests/build-native --target share_base32_test
+# ---------------------------------------------------------------------------
+add_executable(share_base32_test
+    main.cpp
+    test_share_base32.cpp
+    ${COMPRESSION_SRC_DIR}/share_base32.c           # Share text codec
+    ${COMPRESSION_SRC_DIR}/base32.c                 # Base32 codec
+)
+
+target_include_directories(share_base32_test PRIVATE
+    ${COMPRESSION_SRC_DIR}                       # for share_base32.h
+    ${SSS_SRC_DIR}                               # for sss.h (SSS_MAX_SECRET_LEN)
+)
+
+target_link_libraries(share_base32_test PRIVATE
+    GTest::GTest
+    GTest::Main
+)
+
+# ---------------------------------------------------------------------------
 # qrcode_test — QR Code tests only (standalone executable)
 # Build with: cmake --build tests/build-native --target qrcode_test
 # ---------------------------------------------------------------------------
@@ -127,6 +148,9 @@ add_test(NAME sss_test COMMAND sss_test)
 
 # Launch the Base32 codec unit tests (Base32Test suite) via the dedicated binary.
 add_test(NAME base32_test COMMAND base32_test)
+
+# Launch the share base32 codec unit tests (ShareBase32Test suite).
+add_test(NAME share_base32_test COMMAND share_base32_test)
 
 # Launch the QR code unit tests (QRCodeTest suite) via the dedicated binary.
 add_test(NAME qrcode_test COMMAND qrcode_test)
