@@ -96,6 +96,7 @@ if [ -n "$EFFECTIVE_USER" ]; then
                 echo "[ -f \"$SOURCE_ZSHRC\" ] && source \"$SOURCE_ZSHRC\""
                 echo "# Container overrides (host paths may not exist here):"
                 echo "export ZEPHYR_BASE=\"$WORKSPACE/zephyr\""
+                echo "export SSH_AUTH_SOCK=\"/tmp/ssh-agent.socket\""
             } > "$TARGET_ZSHRC"
             chown "$MOUNT_UID:$MOUNT_GID" "$TARGET_ZSHRC" 2>/dev/null || true
         fi
@@ -142,6 +143,18 @@ fi
 BLOB_SCRIPT="/workspaces/relic-core/tools/download-blobs.sh"
 if [ -f "$BLOB_SCRIPT" ]; then
     bash "$BLOB_SCRIPT" 2>/dev/null || true
+fi
+
+# ---- Make the forwarded SSH agent socket accessible ---------------------
+# devcontainer.json forwards the host SSH agent socket into the container at
+# /tmp/ssh-agent.socket (via `-v`, since `--mount type=bind` hits a Docker
+# Desktop socket-mount bug). Docker Desktop maps it as root:root (0660),
+# which the unprivileged runtime user cannot open. Fix ownership so git/ssh
+# can reach the agent.
+SSH_AGENT_SOCKET="/tmp/ssh-agent.socket"
+if [ -S "$SSH_AGENT_SOCKET" ]; then
+    chown "$MOUNT_UID:$MOUNT_GID" "$SSH_AGENT_SOCKET" 2>/dev/null || \
+        chmod 777 "$SSH_AGENT_SOCKET" 2>/dev/null || true
 fi
 
 # ---- Drop privileges and execute the requested command -----------------
