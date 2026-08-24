@@ -84,14 +84,21 @@
         }
 
         /* Try WASM QR generator first (client-side, offline-capable) */
-        if (qrModule && qrModule._wasm_qr_generate) {
+        if (qrModule && qrModule._wasm_qr_generate && qrModule._wasm_share_to_base32) {
             try {
-                var svgPtr = qrModule.ccall('wasm_qr_generate', 'number', ['string'], [shareText]);
-                if (svgPtr) {
-                    var svg = qrModule.UTF8ToString(svgPtr);
-                    qrModule._wasm_qr_free(svgPtr);
-                    saveSvg(svg);
-                    return;
+                /* Compress the hex share to base32 (same codec as the device)
+                   to shrink the QR code. */
+                var b32Ptr = qrModule.ccall('wasm_share_to_base32', 'number', ['string'], [shareText]);
+                if (b32Ptr) {
+                    var b32Text = qrModule.UTF8ToString(b32Ptr);
+                    var svgPtr = qrModule.ccall('wasm_qr_generate', 'number', ['string'], [b32Text]);
+                    qrModule._free(b32Ptr);
+                    if (svgPtr) {
+                        var svg = qrModule.UTF8ToString(svgPtr);
+                        qrModule._wasm_qr_free(svgPtr);
+                        saveSvg(svg);
+                        return;
+                    }
                 }
             } catch (e) { /* fall through to fetch */ }
         }

@@ -293,7 +293,18 @@
 
         var text = null;
         if (len > 0) {
-            text = qrDecodeModule.UTF8ToString(outPtr, len);
+            var raw = qrDecodeModule.UTF8ToString(outPtr, len);
+            /* The QR payload is base32-compressed ("x:base32..."); convert it
+               back to hex so the reconstruct flow keeps working with hex. */
+            if (qrDecodeModule._wasm_share_from_base32) {
+                var hexPtr = qrDecodeModule.ccall('wasm_share_from_base32', 'number', ['string'], [raw]);
+                if (hexPtr) {
+                    text = qrDecodeModule.UTF8ToString(hexPtr);
+                    qrDecodeModule._free(hexPtr);
+                }
+            } else {
+                text = raw;
+            }
         }
 
         qrDecodeModule._free(grayPtr);

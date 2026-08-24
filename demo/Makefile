@@ -45,7 +45,7 @@ OUT_JS = $(OUT_DIR)/sss.js
 QR_WASM_FLAGS = \
 	-s MODULARIZE=1 \
 	-s EXPORT_NAME=QRWasm \
-	-s EXPORTED_FUNCTIONS=_wasm_qr_generate,_wasm_qr_free,_malloc,_free \
+	-s EXPORTED_FUNCTIONS=_wasm_qr_generate,_wasm_qr_free,_wasm_share_to_base32,_malloc,_free \
 	-s EXPORTED_RUNTIME_METHODS=ccall,cwrap,getValue,setValue,UTF8ToString,stringToUTF8,lengthBytesUTF8 \
 	-s NO_EXIT_RUNTIME=1 \
 	-s FILESYSTEM=0 \
@@ -53,8 +53,10 @@ QR_WASM_FLAGS = \
 
 RELIC_QR_DIR = ../src/qrcode
 RELIC_SVG_DIR = ../src/svg
-QR_SRC = src/qr_wasm.c $(RELIC_QR_DIR)/qr_encode.c $(RELIC_SVG_DIR)/qrcode_to_svg.c
-QR_INC = -I$(RELIC_QR_DIR) -I$(RELIC_SVG_DIR)
+RELIC_COMPRESSION_DIR = ../src/compression
+QR_SRC = src/qr_wasm.c $(RELIC_QR_DIR)/qr_encode.c $(RELIC_SVG_DIR)/qrcode_to_svg.c \
+	$(RELIC_COMPRESSION_DIR)/share_base32.c $(RELIC_COMPRESSION_DIR)/base32.c
+QR_INC = -I$(RELIC_QR_DIR) -I$(RELIC_SVG_DIR) -I$(RELIC_COMPRESSION_DIR) -I$(RELIC_SSS_DIR)
 QR_OUT_WASM = $(OUT_DIR)/qr.wasm
 QR_OUT_JS = $(OUT_DIR)/qr.js
 
@@ -63,7 +65,7 @@ QR_OUT_JS = $(OUT_DIR)/qr.js
 QR_DECODE_WASM_FLAGS = \
 	-s MODULARIZE=1 \
 	-s EXPORT_NAME=QRDecodeWasm \
-	-s EXPORTED_FUNCTIONS=_wasm_qr_decode,_malloc,_free \
+	-s EXPORTED_FUNCTIONS=_wasm_qr_decode,_wasm_share_from_base32,_malloc,_free \
 	-s EXPORTED_RUNTIME_METHODS=ccall,cwrap,getValue,setValue,UTF8ToString,HEAPU8 \
 	-s NO_EXIT_RUNTIME=1 \
 	-s FILESYSTEM=0 \
@@ -73,8 +75,9 @@ QUIRC_DIR = ../external/quirc/lib
 QUIRC_SRC = $(QUIRC_DIR)/quirc.c $(QUIRC_DIR)/decode.c $(QUIRC_DIR)/identify.c $(QUIRC_DIR)/version_db.c
 # The wrapper (demo) plus the portable decoder logic moved into src/qrcode/.
 RELIC_QR_DECODE_DIR = ../src/qrcode
-QR_DECODE_SRC = src/qr_decode_wasm.c $(RELIC_QR_DECODE_DIR)/qr_decode.c $(QUIRC_SRC)
-QR_DECODE_INC = -I$(RELIC_QR_DECODE_DIR) -I$(QUIRC_DIR)
+QR_DECODE_SRC = src/qr_decode_wasm.c $(RELIC_QR_DECODE_DIR)/qr_decode.c $(QUIRC_SRC) \
+	$(RELIC_COMPRESSION_DIR)/share_base32.c $(RELIC_COMPRESSION_DIR)/base32.c
+QR_DECODE_INC = -I$(RELIC_QR_DECODE_DIR) -I$(QUIRC_DIR) -I$(RELIC_COMPRESSION_DIR) -I$(RELIC_SSS_DIR)
 QR_DECODE_OUT_WASM = $(OUT_DIR)/qr_decode.wasm
 QR_DECODE_OUT_JS = $(OUT_DIR)/qr_decode.js
 
