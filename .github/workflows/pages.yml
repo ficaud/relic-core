@@ -83,6 +83,14 @@ jobs:
             echo "ESP32: no release yet, skipping firmware download"
           fi
 
+          URL_XIAO=$(echo "$RELEASE" | jq -r '.assets[] | select(.name=="fw-xiao-esp32s3.bin") | .browser_download_url')
+          if [ -n "$URL_XIAO" ]; then
+            echo "XIAO ESP32S3: $URL_XIAO"
+            curl -sL --fail -o pages/fw-xiao-esp32s3.bin "$URL_XIAO"
+          else
+            echo "XIAO ESP32S3: no release yet, skipping firmware download"
+          fi
+
           # Write a tiny manifest for the flash page to read.
           # Prefer the explicitly requested version (from a release dispatch),
           # otherwise fall back to the latest release tag.

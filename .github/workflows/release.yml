@@ -29,6 +29,8 @@ jobs:
             artifact: fw-esp32-s3-devkitc-1
           - board: doit_esp32_devkit_v1/esp32/procpu
             artifact: fw-esp32-devkit-v1
+          - board: xiao_esp32s3/esp32s3/procpu
+            artifact: fw-xiao-esp32s3
     runs-on: ubuntu-latest
 
     steps:

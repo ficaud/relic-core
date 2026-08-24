@@ -29,6 +29,7 @@
                 style="width:100%;padding:10px 14px;border:none;border-radius:20px;font-size:14px;outline:none;background:rgba(255,255,255,0.85);color:#333">
                 <option value="esp32s3">ESP32-S3 DevKitC-1</option>
                 <option value="esp32">ESP32 DevKit V1 (WROOM-32)</option>
+                <option value="xiao_esp32s3">Seeed XIAO ESP32S3</option>
             </select>
         </div>
 
@@ -107,6 +108,13 @@
                 flashOffset: '0x1000',
                 reset: 'default_reset',
                 detectMagic: 15736195,
+            },
+            xiao_esp32s3: {
+                chip: 'ESP32-S3',
+                baud: 921600,
+                flashOffset: '0x0',
+                reset: 'usb_reset',
+                detectMagic: 9,
             },
         };
 
@@ -194,6 +202,7 @@
         const FIRMWARE_FILES = {
             esp32s3: 'fw-esp32-s3-devkitc-1.bin',
             esp32: 'fw-esp32-devkit-v1.bin',
+            xiao_esp32s3: 'fw-xiao-esp32s3.bin',
         };
 
         // ---- Fetch latest firmware ----

@@ -26,6 +26,18 @@
             }
         },
         {
+            "name": "xiao_esp32s3",
+            "displayName": "Seeed XIAO ESP32S3 (Zephyr)",
+            "description": "Build for Seeed XIAO ESP32S3 via 'west build -b xiao_esp32s3/esp32s3/procpu'",
+            "generator": "Ninja",
+            "binaryDir": "build/xiao_esp32s3",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "MinSizeRel",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+                "BOARD": "xiao_esp32s3/esp32s3/procpu"
+            }
+        },
+        {
             "name": "tests",
             "displayName": "Unit tests (Linux / GTest)",
             "description": "Configure and build native unit tests with Google Test",
@@ -48,6 +60,11 @@
             "name": "esp32_wroom",
             "displayName": "Build ESP32-WROOM-32 firmware",
             "configurePreset": "esp32_wroom"
+        },
+        {
+            "name": "xiao_esp32s3",
+            "displayName": "Build Seeed XIAO ESP32S3 firmware",
+            "configurePreset": "xiao_esp32s3"
         },
         {
             "name": "tests",
