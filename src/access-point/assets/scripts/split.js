@@ -96,8 +96,10 @@
             } catch (e) { /* fall through to fetch */ }
         }
 
-        /* Fallback: server-side QR generation (embedded device) */
-        var url = '/qr.svg?text=' + encodeURIComponent(shareText);
+        /* Fallback: server-side QR generation (embedded device).
+           /qr-share.svg compresses the hex payload to base32 in C to shrink
+           the QR code. */
+        var url = '/qr-share.svg?text=' + encodeURIComponent(shareText);
         fetch(url)
             .then(function (r) {
                 if (!r.ok) throw new Error('QR generation failed');

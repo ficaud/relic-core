@@ -28,6 +28,7 @@
 #include "qr_encode.h"
 #include "qrcode_to_svg.h"
 #include "sss.h"
+#include "share_base32.h"
 
 #include <ctype.h>
 #include <stdio.h>
@@ -150,6 +151,15 @@ static int count_tokens(const char *s);
  * @return 0 on success, -1 if not found.
  */
 static int get_token(const char *s, int index, char *out, size_t out_size);
+
+/**
+ * @brief Render a text payload as a QR code SVG HTTP response.
+ *
+ * @param text[in] Text to encode (NUL-terminated, must not be NULL).
+ *
+ * @return Complete HTTP response string (static, do not free).
+ */
+static const char *handler_qr_svg_render(const char *text);
 
 #if defined(CONFIG_RELIC_QR_DECODE_SERVER)
 /**
@@ -332,54 +342,41 @@ exit:
 const char *handler_qr_svg(const struct http_request *req)
 {
     const char *ret = http_responses_list[HTTP_RESPONSE_BAD_REQUEST];
-    static char svg_buf[QR_SVG_BUF_SIZE];
-    static uint8_t qr_temp[qrcodegen_BUFFER_LEN_MAX];
-    static uint8_t qr_code[qrcodegen_BUFFER_LEN_MAX];
     static char text_buf[1024];
 
     /* Extract "text" query parameter, default to "hello world" */
-    const char *text;
     char raw_text[1024];
     if (get_query_param(req->query, "text", raw_text, sizeof(raw_text)) == 0)
     {
         url_decode(text_buf, raw_text, sizeof(text_buf));
-        text = text_buf;
+        ret = handler_qr_svg_render(text_buf);
     }
-    else
+
+    return (ret);
+}
+
+const char *handler_qr_share_svg(const struct http_request *req)
+{
+    const char *ret = http_responses_list[HTTP_RESPONSE_BAD_REQUEST];
+    static char text_buf[1024];
+    static char share_b32[SHARE_B32_BUF_SIZE + 4]; /* "x:" prefix + payload */
+
+    /* Extract "text" query parameter ("x:hex...") */
+    char raw_text[1024];
+    if (get_query_param(req->query, "text", raw_text, sizeof(raw_text)) != 0)
     {
-        ret = http_responses_list[HTTP_RESPONSE_BAD_REQUEST];
         goto exit;
     }
 
-    /* Generate the QR Code (ECC LOW, mask AUTO, versions 1-40) */
-    bool ok = qrcodegen_encodeText(text, qr_temp, qr_code);
-    if (!ok)
+    url_decode(text_buf, raw_text, sizeof(text_buf));
+
+    /* Compress the hex payload to base32 to shrink the QR code. */
+    if (share_to_base32(text_buf, share_b32, sizeof(share_b32)) != 0)
     {
-        ret = http_responses_list[HTTP_RESPONSE_QR_CODE_GENERATION_FAILED];
         goto exit;
     }
 
-    /* Write the HTTP response headers */
-    int n = snprintf(svg_buf,
-                     sizeof(svg_buf),
-                     "HTTP/1.1 200 OK\r\n"
-                     "Content-Type: image/svg+xml\r\n"
-                     "Connection: close\r\n"
-                     "\r\n");
-    if (n < 0 || (size_t)n >= sizeof(svg_buf))
-    {
-        ret = http_responses_list[HTTP_RESPONSE_QR_CODE_GENERATION_FAILED];
-        goto exit;
-    }
-
-    /* Render the QR code as a pure SVG document, appended after the headers */
-    if (qrcode_to_svg(qr_code, qrcodegen_getSize(qr_code), svg_buf + n, sizeof(svg_buf) - n) < 0)
-    {
-        ret = http_responses_list[HTTP_RESPONSE_QR_CODE_GENERATION_FAILED];
-        goto exit;
-    }
-
-    ret = svg_buf;
+    ret = handler_qr_svg_render(share_b32);
 
 exit:
     return (ret);
@@ -510,8 +507,18 @@ const char *handler_qr_decode_stream(const struct http_request *req, const char 
 
     LOG_INF("QR decode: ok, %d bytes payload", dec);
 
+    /* The QR payload is a share in "x:base32..." form. Convert it back to
+     * "x:hex..." so the front-end keeps consuming hex shares. */
+    static char share_hex[QR_DECODE_MAX_PAYLOAD];
+    if (share_from_base32(out, (size_t)dec, share_hex, sizeof(share_hex)) != 0)
+    {
+        ret = http_responses_list[HTTP_RESPONSE_UNPROCESSABLE_ENTITY];
+        LOG_WRN("QR decode: payload is not a base32 share");
+        goto exit;
+    }
+
     static char body[QR_DECODE_MAX_PAYLOAD + 32];
-    ret = handler_qr_decode_json_response(dec, out, body, sizeof(body));
+    ret = handler_qr_decode_json_response((int)strlen(share_hex), share_hex, body, sizeof(body));
 
 exit:
     return (ret);
@@ -712,6 +719,52 @@ static int hex_to_bytes(const char *hex, uint8_t *out, size_t out_max)
         out[i / 2] = (uint8_t)b;
     }
     return (int)(len / 2);
+}
+
+static const char *handler_qr_svg_render(const char *text)
+{
+    const char *ret = http_responses_list[HTTP_RESPONSE_BAD_REQUEST];
+    static char svg_buf[QR_SVG_BUF_SIZE];
+    static uint8_t qr_temp[qrcodegen_BUFFER_LEN_MAX];
+    static uint8_t qr_code[qrcodegen_BUFFER_LEN_MAX];
+
+    if (text == NULL)
+    {
+        goto exit;
+    }
+
+    /* Generate the QR Code (ECC LOW, mask AUTO, versions 1-40) */
+    bool ok = qrcodegen_encodeText(text, qr_temp, qr_code);
+    if (!ok)
+    {
+        ret = http_responses_list[HTTP_RESPONSE_QR_CODE_GENERATION_FAILED];
+        goto exit;
+    }
+
+    /* Write the HTTP response headers */
+    int n = snprintf(svg_buf,
+                     sizeof(svg_buf),
+                     "HTTP/1.1 200 OK\r\n"
+                     "Content-Type: image/svg+xml\r\n"
+                     "Connection: close\r\n"
+                     "\r\n");
+    if (n < 0 || (size_t)n >= sizeof(svg_buf))
+    {
+        ret = http_responses_list[HTTP_RESPONSE_QR_CODE_GENERATION_FAILED];
+        goto exit;
+    }
+
+    /* Render the QR code as a pure SVG document, appended after the headers */
+    if (qrcode_to_svg(qr_code, qrcodegen_getSize(qr_code), svg_buf + n, sizeof(svg_buf) - n) < 0)
+    {
+        ret = http_responses_list[HTTP_RESPONSE_QR_CODE_GENERATION_FAILED];
+        goto exit;
+    }
+
+    ret = svg_buf;
+
+exit:
+    return (ret);
 }
 
 static int get_query_param(const char *query, const char *param, char *out, size_t out_size)

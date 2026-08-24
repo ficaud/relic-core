@@ -39,6 +39,7 @@ static const struct
     {"/divide", handler_divide},
     {"/reconstruct", handler_reconstruct},
     {"/qr.svg", handler_qr_svg},
+    {"/qr-share.svg", handler_qr_share_svg},
 };
 
 // ===========================================================================

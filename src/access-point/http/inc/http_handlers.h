@@ -69,6 +69,19 @@ const char *handler_reconstruct(const struct http_request *req);
 const char *handler_qr_svg(const struct http_request *req);
 
 /**
+ * @brief Share QR Code SVG handler — generates a QR Code as an SVG image.
+ *
+ * Encodes the share from query parameter "text" (form "x:hex..."), compresses
+ * its payload to base32 ("x:base32...") to shrink the QR code, and returns the
+ * result as an SVG image with Content-Type: image/svg+xml.
+ *
+ * @param req[in] Request parsed by router_parse().
+ *
+ * @return Complete HTTP response string (static, do not free).
+ */
+const char *handler_qr_share_svg(const struct http_request *req);
+
+/**
  * @brief QR decode handler — decodes a QR code from an uploaded grayscale image.
  *
  * Expects a POST whose query carries the image dimensions:
