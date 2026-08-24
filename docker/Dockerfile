@@ -37,6 +37,7 @@ COPY demo/                  demo/
 COPY src/sss/               src/sss/
 COPY src/qrcode/            src/qrcode/
 COPY src/svg/               src/svg/
+COPY src/compression/        src/compression/
 COPY external/quirc/        external/quirc/
 
 # Build the WASM modules (sss.*, qr.* and qr_decode.*) into demo/scripts/.
