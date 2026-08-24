@@ -58,6 +58,34 @@
             }
         },
         {
+            "label": "Build (xiao_esp32s3/procpu)",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "-lc",
+                "west build -b xiao_esp32s3/esp32s3/procpu -d build-xiao . && ln -sfn \"${workspaceFolder}/build-xiao/compile_commands.json\" \"${workspaceFolder}/compile_commands.json\""
+            ],
+            "options": {
+                "env": {
+                    "ZEPHYR_BASE": "${workspaceFolder}/zephyr",
+                    "ZEPHYR_SDK_INSTALL_DIR": "/opt/zephyr-sdk"
+                }
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "clear": true
+            }
+        },
+        {
             "label": "Pristine Build (esp32s3_devkitc/procpu)",
             "type": "shell",
             "command": "bash",
@@ -89,6 +117,31 @@
             "args": [
                 "-lc",
                 "west build -b doit_esp32_devkit_v1/esp32/procpu -p always -d build-esp32wroom . && ln -sfn \"${workspaceFolder}/build-esp32wroom/compile_commands.json\" \"${workspaceFolder}/compile_commands.json\""
+            ],
+            "options": {
+                "env": {
+                    "ZEPHYR_BASE": "${workspaceFolder}/zephyr",
+                    "ZEPHYR_SDK_INSTALL_DIR": "/opt/zephyr-sdk"
+                }
+            },
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "clear": true
+            }
+        },
+        {
+            "label": "Pristine Build (xiao_esp32s3/procpu)",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "-lc",
+                "west build -b xiao_esp32s3/esp32s3/procpu -p always -d build-xiao . && ln -sfn \"${workspaceFolder}/build-xiao/compile_commands.json\" \"${workspaceFolder}/compile_commands.json\""
             ],
             "options": {
                 "env": {
