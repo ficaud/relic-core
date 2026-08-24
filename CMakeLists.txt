@@ -40,6 +40,7 @@ else()
       src/access-point/wifi/src/wifi_mgr.c
       src/sss/sss.c
       src/compression/base32.c
+      src/compression/share_base32.c
       src/qrcode/qr_encode.c
       src/svg/qrcode_to_svg.c
   )

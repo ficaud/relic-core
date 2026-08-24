@@ -92,15 +92,14 @@ std::string readFile(const std::string &path, bool *ok)
 /**
  * @brief Encode a share string payload and render the resulting QR grid as SVG.
  *
- * @param share  The share string (e.g. "1:b70a...") to encode.
+ * @param share  The share string (e.g. "1:KXGM6J7...") to encode.
  * @return The generated SVG document on success, or an empty string on failure.
  */
 std::string renderShareSvg(const std::string &share)
 {
-    // The QR encoder supports alphanumeric mode only, and the reference SVG
-    // files on disk were generated from the UPPERCASED share strings (the
-    // front-end uppercases the hex payload before requesting the QR code, see
-    // split.js). Mirror that behaviour here so the golden comparison matches.
+    // The QR encoder supports alphanumeric mode only. The base32 share payload
+    // (A-Z 2-7) is already uppercase and alphanumeric-safe, so it is encoded
+    // as-is. Uppercasing is kept defensively for any lowercased transcription.
     std::string upper = share;
     for (char &c : upper)
     {
@@ -134,12 +133,15 @@ std::string renderShareSvg(const std::string &share)
  * @brief Absolute path of the golden reference SVG file for a given share.
  *
  * @param shareIndex  Share number (1..5).
- * @return The path to `seed-phrase-share<shareIndex>.svg` under the reference
- *         directory configured at build time (REFERENCE_SVG_DIR).
+ * @param format      "base32" (file `seed-phrase-shareN.svg`) or "hex"
+ *                    (file `seed-phrase-shareN-hex.svg`).
+ * @return The path to the reference file under the directory configured at
+ *         build time (REFERENCE_SVG_DIR).
  */
-std::string referencePath(int shareIndex)
+std::string referencePath(int shareIndex, const std::string &format)
 {
-    return std::string(REFERENCE_SVG_DIR) + "/seed-phrase-share" + std::to_string(shareIndex) + ".svg";
+    std::string suffix = (format == "hex") ? "-hex" : "";
+    return std::string(REFERENCE_SVG_DIR) + "/seed-phrase-share" + std::to_string(shareIndex) + suffix + ".svg";
 }
 
 } // namespace
@@ -377,20 +379,20 @@ TEST_F(SVGTest, ZeroLengthBufferFails)
 // Golden-file comparison tests
 // ---------------------------------------------------------------------------
 //
-// These tests re-encode each seed-phrase share string with the current QR code
-// encoder + SVG renderer and compare the resulting document byte-for-byte with
-// the golden reference SVG files checked in under tests/reference/svg/. They
-// guarantee that the output stays stable and identical to what was generated
-// on Relic Core v1.2.3 on an ESP32-DevKitV1.
+// These tests re-encode each base32 seed-phrase share string with the current
+// QR code encoder + SVG renderer and compare the resulting document byte-for-byte
+// with the golden reference SVG files checked in under tests/reference/svg/.
+// The base32 payload form is what the /qr-share.svg endpoint emits.
 
 /**
  * @brief Encode a share string, render it to SVG and compare against its
  *        golden reference file.
  *
- * @param share       The share string (e.g. "1:b70a...").
+ * @param share       The share string (e.g. "1:KXGM6J7...").
  * @param shareIndex  Share number (1..5), used to locate the reference file.
+ * @param format      "base32" or "hex" — selects the reference file variant.
  */
-void expectMatchesReference(const std::string &share, int shareIndex)
+void expectMatchesReference(const std::string &share, int shareIndex, const std::string &format)
 {
     // Render the current SVG from the share string.
     const std::string generated = renderShareSvg(share);
@@ -398,45 +400,80 @@ void expectMatchesReference(const std::string &share, int shareIndex)
 
     // Read the golden reference file.
     bool ok = false;
-    const std::string reference = readFile(referencePath(shareIndex), &ok);
-    ASSERT_TRUE(ok) << "Reference SVG file not found: " << referencePath(shareIndex);
+    const std::string reference = readFile(referencePath(shareIndex, format), &ok);
+    ASSERT_TRUE(ok) << "Reference SVG file not found: " << referencePath(shareIndex, format);
 
     // The generated document must match the reference byte-for-byte.
     EXPECT_EQ(generated, reference) << "Share " << shareIndex << " SVG does not match the reference";
 }
 
-TEST_F(SVGTest, ReferenceTestSeedPhraseShare1)
+TEST_F(SVGTest, ReferenceTestBase32Share1)
 {
-    expectMatchesReference(seedphrase_share1, 1);
+    expectMatchesReference(base32_share1, 1, "base32");
 }
 
-TEST_F(SVGTest, ReferenceTestSeedPhraseShare3)
+TEST_F(SVGTest, ReferenceTestBase32Share3)
 {
-    expectMatchesReference(seedphrase_share3, 3);
+    expectMatchesReference(base32_share3, 3, "base32");
 }
 
-TEST_F(SVGTest, ReferenceTestSeedPhraseShare4)
+TEST_F(SVGTest, ReferenceTestBase32Share4)
 {
-    expectMatchesReference(seedphrase_share4, 4);
+    expectMatchesReference(base32_share4, 4, "base32");
 }
 
-TEST_F(SVGTest, ReferenceTestSeedPhraseShare5)
+TEST_F(SVGTest, ReferenceTestBase32Share5)
 {
-    expectMatchesReference(seedphrase_share5, 5);
+    expectMatchesReference(base32_share5, 5, "base32");
+}
+
+TEST_F(SVGTest, ReferenceTestHexShare1)
+{
+    expectMatchesReference(seedphrase_share1, 1, "hex");
+}
+
+TEST_F(SVGTest, ReferenceTestHexShare3)
+{
+    expectMatchesReference(seedphrase_share3, 3, "hex");
+}
+
+TEST_F(SVGTest, ReferenceTestHexShare4)
+{
+    expectMatchesReference(seedphrase_share4, 4, "hex");
+}
+
+TEST_F(SVGTest, ReferenceTestHexShare5)
+{
+    expectMatchesReference(seedphrase_share5, 5, "hex");
 }
 
 // ---------------------------------------------------------------------------
 // Share 2 has no golden reference file, so only structural checks are done.
 // ---------------------------------------------------------------------------
 
-TEST_F(SVGTest, ReferenceTestSeedPhraseShare2Structure)
+TEST_F(SVGTest, ReferenceTestBase32Share2Structure)
+{
+    const std::string generated = renderShareSvg(base32_share2);
+    ASSERT_FALSE(generated.empty()) << "Failed to render SVG for share 2";
+
+    // With the alphanumeric-only encoder, the base32 share 2 payload is
+    // encoded as a version-9 QR code: 53 modules, so the image is 53*8 + 64
+    // = 488 px, matching the golden reference SVGs for shares 1, 3, 4 and 5.
+    EXPECT_NE(generated.find("viewBox=\"0 0 488 488\""), std::string::npos);
+    EXPECT_NE(generated.find("width=\"488\" height=\"488\""), std::string::npos);
+    EXPECT_NE(generated.find("<rect width=\"100%\" height=\"100%\" fill=\"white\"/>"), std::string::npos);
+    EXPECT_NE(generated.find("<path d=\""), std::string::npos);
+    EXPECT_NE(generated.find("stroke=\"black\" stroke-width=\"8\"/>"), std::string::npos);
+}
+
+TEST_F(SVGTest, ReferenceTestHexShare2Structure)
 {
     const std::string generated = renderShareSvg(seedphrase_share2);
     ASSERT_FALSE(generated.empty()) << "Failed to render SVG for share 2";
 
-    // With the alphanumeric-only encoder, the uppercased share 2 payload is
-    // encoded as a version-10 QR code: 57 modules, so the image is 57*8 + 64
-    // = 520 px, matching the golden reference SVGs for shares 1, 3, 4 and 5.
+    // With the alphanumeric-only encoder, the uppercased hex share 2 payload
+    // is encoded as a version-10 QR code: 57 modules, so the image is 57*8 + 64
+    // = 520 px, matching the historical golden reference SVGs.
     EXPECT_NE(generated.find("viewBox=\"0 0 520 520\""), std::string::npos);
     EXPECT_NE(generated.find("width=\"520\" height=\"520\""), std::string::npos);
     EXPECT_NE(generated.find("<rect width=\"100%\" height=\"100%\" fill=\"white\"/>"), std::string::npos);
