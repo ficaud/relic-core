@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-08-24
+
+### added
+- `xiao32 (esp32s3)` : support for the xiao32 (esp32s3) board
+- `base32`: base32 encoding/decoding and its unit tests for qrcode shares conversation only ([#46](https://github.com/ficaud/relic-core/issues/46)).
+
+### changed
+- `devcontainer` : update devcontainer to forward password manager ssh keys agents using open-ssh
+- `readme` : update project's name to reveal the acronym of "Relic"
+
 ## [1.4.3] - 2026-08-18
 
 ### changed
