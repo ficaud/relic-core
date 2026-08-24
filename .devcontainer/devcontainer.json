@@ -37,20 +37,22 @@
   "containerEnv": {
     "ZEPHYR_TOOLCHAIN_VARIANT": "zephyr",
     "ZEPHYR_SDK_INSTALL_DIR": "/opt/zephyr-sdk",
-    "ZEPHYR_BASE": "/workspaces/relic-core/zephyr"
+    "ZEPHYR_BASE": "/workspaces/relic-core/zephyr",
+    "SSH_AUTH_SOCK": "/tmp/ssh-agent.socket"
   },
   "mounts": [
     "source=${localEnv:HOME}/.config/nvim,target=/home/vscode/.config/nvim,type=bind,consistency=cached",
     "source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,consistency=cached",
     "source=${localEnv:HOME}/.zshrc,target=/home/vscode/.zshrc,type=bind,readonly"
   ],
-  "postCreateCommand": "sudo -n chown -R \"$(whoami):$(id -g)\" /workspaces/relic-core /opt/zephyr-sdk 2>/dev/null || true; cd /workspaces/relic-core && if [ -d .west ]; then west update; else mkdir -p .west && printf '[manifest]\\npath = .\\nfile = west.yml\\n\\n[zephyr]\\nbase = zephyr\\n' > .west/config && env -u ZEPHYR_BASE west update; fi && bash tools/download-blobs.sh",
+  "postCreateCommand": "sudo -n chown -R \"$(whoami):$(id -g)\" /workspaces/relic-core /opt/zephyr-sdk 2>/dev/null || true; cd /workspaces/relic-core && if [ -d .west ]; then west update; else mkdir -p .west && printf '[manifest]\\npath = .\\nfile = west.yml\\n\\n[zephyr]\\nbase = zephyr\\n' > .west/config && env -u ZEPHYR_BASE west update; fi && bash tools/download-blobs.sh && mkdir -p \"$HOME/.ssh\" && ssh-keyscan github.com >> \"$HOME/.ssh/known_hosts\" 2>/dev/null && chmod 700 \"$HOME/.ssh\" && chmod 600 \"$HOME/.ssh/known_hosts\"; sudo mkdir -p /root/.ssh && sudo sh -c 'ssh-keyscan github.com >> /root/.ssh/known_hosts' 2>/dev/null",
   "overrideCommand": false,
   "updateRemoteUserUID": false,
   "remoteUser": "vscode",
   "runArgs": [
     "--privileged",
-    "--env-file", "${localWorkspaceFolder}/.env"
+    "--env-file", "${localWorkspaceFolder}/.env",
+    "-v", "${localEnv:SSH_AUTH_SOCK}:/tmp/ssh-agent.socket"
   ],
   "appPort": [8000],
   "forwardPorts": [8000],

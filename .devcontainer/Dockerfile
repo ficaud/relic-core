@@ -50,6 +50,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     lzop \
     zstd \
     net-tools \
+    openssh-client \
     screen \
     socat \
     libgtest-dev \
