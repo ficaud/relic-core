@@ -40,7 +40,8 @@ COPY src/svg/               src/svg/
 COPY src/compression/        src/compression/
 COPY external/quirc/        external/quirc/
 
-# Build the WASM modules (sss.*, qr.* and qr_decode.*) into demo/scripts/.
+# Build the WASM modules (sss.*, qr.*, compression.* and qr_decode.*) into
+# demo/scripts/.
 RUN make -C demo clean all
 
 # ── Stage 2: Assemble static assets ───────────────────────────────────────
@@ -64,6 +65,8 @@ COPY --from=wasm-builder /workspace/demo/scripts/sss.js   /usr/share/nginx/html/
 COPY --from=wasm-builder /workspace/demo/scripts/sss.wasm /usr/share/nginx/html/scripts/sss.wasm
 COPY --from=wasm-builder /workspace/demo/scripts/qr.js    /usr/share/nginx/html/scripts/qr.js
 COPY --from=wasm-builder /workspace/demo/scripts/qr.wasm  /usr/share/nginx/html/scripts/qr.wasm
+COPY --from=wasm-builder /workspace/demo/scripts/compression.js   /usr/share/nginx/html/scripts/compression.js
+COPY --from=wasm-builder /workspace/demo/scripts/compression.wasm /usr/share/nginx/html/scripts/compression.wasm
 COPY --from=wasm-builder /workspace/demo/scripts/qr_decode.js   /usr/share/nginx/html/scripts/qr_decode.js
 COPY --from=wasm-builder /workspace/demo/scripts/qr_decode.wasm /usr/share/nginx/html/scripts/qr_decode.wasm
 

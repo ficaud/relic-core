@@ -29,6 +29,7 @@
 #include "qrcode_to_svg.h"
 #include "sss.h"
 #include "share_base32.h"
+#include "bip39.h"
 
 #include <ctype.h>
 #include <stdio.h>
@@ -62,13 +63,14 @@ static void url_decode(char *dst, const char *src, size_t dst_size);
  *
  * Splits the secret into shares and returns them.
  *
- * @param secret[in] The secret to encrypt.
+ * @param secret[in] The secret to encrypt (raw bytes).
+ * @param secret_len[in] Length of the secret in bytes.
  * @param shares_out[out] Array to hold the generated shares.
  * @param shares_count[out] Number of shares generated.
  *
  * @return 0 on success, negative on error.
  */
-static int handler_shamir_split(const char *secret, struct sss_share *shares_out, size_t *shares_count);
+static int handler_shamir_split(const uint8_t *secret, size_t secret_len, struct sss_share *shares_out, size_t *shares_count);
 
 /**
  * @brief Parse entry shares from query parameters.
@@ -258,9 +260,30 @@ const char *handler_divide(const struct http_request *req)
 
             LOG_INF("Secret to encrypt: %s", msg_buf);
 
+            /* Optional BIP-39 compression: compress the seed phrase into a
+               compact binary form (2 little-endian bytes per word) before
+               splitting, so the shares are smaller. */
+            const uint8_t *secret = (const uint8_t *)msg_buf;
+            size_t secret_len = strlen(msg_buf);
+
+            uint8_t compressed[SEEDPHRASE_MAX_WORDS_COUNT * 2];
+            char bip_buf[8];
+            if (get_query_param(query, "bip", bip_buf, sizeof(bip_buf)) == 0 && strcmp(bip_buf, "1") == 0)
+            {
+                size_t out_len = 0;
+                if (bip39_compress(msg_buf, secret_len, compressed, sizeof(compressed), &out_len) != 0)
+                {
+                    LOG_ERR("BIP-39 compression failed");
+                    goto exit;
+                }
+                secret = compressed;
+                secret_len = out_len;
+                LOG_INF("BIP-39 compressed to %zu bytes", secret_len);
+            }
+
             static struct sss_share shares[SSS_N];
             size_t shares_count = 0;
-            if (handler_shamir_split(msg_buf, shares, &shares_count) < 0)
+            if (handler_shamir_split(secret, secret_len, shares, &shares_count) < 0)
             {
                 LOG_ERR("Failed to encrypt secret");
                 goto exit;
@@ -333,7 +356,27 @@ const char *handler_reconstruct(const struct http_request *req)
     }
 
     /* Build JSON response */
-    ret = handler_combine_json_response((const char *)secret);
+    const char *secret_text = (const char *)secret;
+
+    /* Optional BIP-39 decompression: the reconstructed secret is a compact
+       binary form of a seed phrase; expand it back to the words. */
+    char bip_buf[8];
+    if (get_query_param(query, "bip", bip_buf, sizeof(bip_buf)) == 0 && strcmp(bip_buf, "1") == 0)
+    {
+        static char decompressed[SEEDPHRASE_MAX_WORDS_COUNT * SEEDPHRASE_MAX_WORD_LEN +
+                                 SEEDPHRASE_MAX_WORDS_COUNT + 1];
+        size_t out_len = 0;
+        if (bip39_decompress(secret, shares[0].len, decompressed, sizeof(decompressed), &out_len) != 0)
+        {
+            LOG_ERR("BIP-39 decompression failed");
+            ret = http_responses_list[HTTP_RESPONSE_INTERNAL_SERVER_ERROR];
+            goto exit;
+        }
+        secret_text = decompressed;
+        LOG_INF("BIP-39 decompressed to %zu bytes", out_len);
+    }
+
+    ret = handler_combine_json_response(secret_text);
 
 exit:
     return (ret);
@@ -552,16 +595,15 @@ static void url_decode(char *dst, const char *src, size_t dst_size)
     dst[i] = '\0';
 }
 
-static int handler_shamir_split(const char *secret, struct sss_share *shares_out, size_t *shares_count)
+static int handler_shamir_split(const uint8_t *secret, size_t secret_len, struct sss_share *shares_out, size_t *shares_count)
 {
     int ret = -1; // error by default
     static struct sss_share shares[SSS_N]; // local buffer for shares
 
     /* --- Shamir's Secret Sharing --- */
-    size_t secret_len = strlen(secret);
     if (secret_len > 0 && secret_len <= SSS_MAX_SECRET_LEN)
     {
-        ret = sss_split((const uint8_t *)secret, secret_len, SSS_N, SSS_K, shares);
+        ret = sss_split(secret, secret_len, SSS_N, SSS_K, shares);
         if (ret != 0)
         {
             goto exit; /* error during split */

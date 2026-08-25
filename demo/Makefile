@@ -4,8 +4,9 @@
 #   docker run --rm -v $(PWD):/src emscripten/emsdk make -C /src
 #
 # References the parent project sss.c and qr_encode.c directly (no copy).
-# Outputs sss.js / sss.wasm and qr.js / qr.wasm to scripts/ so the WASM-aware
-# JS (split.js, unsplit.js) can load the modules from the same directory.
+# Outputs sss.js/sss.wasm, qr.js/qr.wasm, compression.js/compression.wasm and
+# qr_decode.js/qr_decode.wasm to scripts/ so the WASM-aware JS (split.js,
+# unsplit.js) can load the modules from the same directory.
 # HTML pages are served from ../src/access-point/assets/.
 
 # Locate the Emscripten compiler. Prefer `emcc` already on PATH, otherwise fall
@@ -45,7 +46,7 @@ OUT_JS = $(OUT_DIR)/sss.js
 QR_WASM_FLAGS = \
 	-s MODULARIZE=1 \
 	-s EXPORT_NAME=QRWasm \
-	-s EXPORTED_FUNCTIONS=_wasm_qr_generate,_wasm_qr_free,_wasm_share_to_base32,_malloc,_free \
+	-s EXPORTED_FUNCTIONS=_wasm_qr_generate,_wasm_qr_free,_malloc,_free \
 	-s EXPORTED_RUNTIME_METHODS=ccall,cwrap,getValue,setValue,UTF8ToString,stringToUTF8,lengthBytesUTF8 \
 	-s NO_EXIT_RUNTIME=1 \
 	-s FILESYSTEM=0 \
@@ -53,19 +54,35 @@ QR_WASM_FLAGS = \
 
 RELIC_QR_DIR = ../src/qrcode
 RELIC_SVG_DIR = ../src/svg
-RELIC_COMPRESSION_DIR = ../src/compression
-QR_SRC = src/qr_wasm.c $(RELIC_QR_DIR)/qr_encode.c $(RELIC_SVG_DIR)/qrcode_to_svg.c \
-	$(RELIC_COMPRESSION_DIR)/share_base32.c $(RELIC_COMPRESSION_DIR)/base32.c
-QR_INC = -I$(RELIC_QR_DIR) -I$(RELIC_SVG_DIR) -I$(RELIC_COMPRESSION_DIR) -I$(RELIC_SSS_DIR)
+QR_SRC = src/qr_wasm.c $(RELIC_QR_DIR)/qr_encode.c $(RELIC_SVG_DIR)/qrcode_to_svg.c
+QR_INC = -I$(RELIC_QR_DIR) -I$(RELIC_SVG_DIR)
 QR_OUT_WASM = $(OUT_DIR)/qr.wasm
 QR_OUT_JS = $(OUT_DIR)/qr.js
+
+# ── Compression codec WASM (share base32 + BIP-39) ──
+
+COMPRESSION_WASM_FLAGS = \
+	-s MODULARIZE=1 \
+	-s EXPORT_NAME=CompressionWasm \
+	-s EXPORTED_FUNCTIONS=_wasm_share_to_base32,_wasm_share_from_base32,_wasm_bip39_compress,_wasm_bip39_decompress,_malloc,_free \
+	-s EXPORTED_RUNTIME_METHODS=ccall,cwrap,getValue,setValue,UTF8ToString,stringToUTF8,lengthBytesUTF8 \
+	-s NO_EXIT_RUNTIME=1 \
+	-s FILESYSTEM=0 \
+	--no-entry
+
+RELIC_COMPRESSION_DIR = ../src/compression
+COMPRESSION_SRC = src/compression_wasm.c \
+	$(RELIC_COMPRESSION_DIR)/share_base32.c $(RELIC_COMPRESSION_DIR)/base32.c $(RELIC_COMPRESSION_DIR)/bip39.c $(RELIC_COMPRESSION_DIR)/bip39_words.c
+COMPRESSION_INC = -I$(RELIC_COMPRESSION_DIR) -I$(RELIC_SSS_DIR)
+COMPRESSION_OUT_WASM = $(OUT_DIR)/compression.wasm
+COMPRESSION_OUT_JS = $(OUT_DIR)/compression.js
 
 # ── QR Code decode WASM (quirc) ──
 
 QR_DECODE_WASM_FLAGS = \
 	-s MODULARIZE=1 \
 	-s EXPORT_NAME=QRDecodeWasm \
-	-s EXPORTED_FUNCTIONS=_wasm_qr_decode,_wasm_share_from_base32,_malloc,_free \
+	-s EXPORTED_FUNCTIONS=_wasm_qr_decode,_malloc,_free \
 	-s EXPORTED_RUNTIME_METHODS=ccall,cwrap,getValue,setValue,UTF8ToString,HEAPU8 \
 	-s NO_EXIT_RUNTIME=1 \
 	-s FILESYSTEM=0 \
@@ -75,15 +92,14 @@ QUIRC_DIR = ../external/quirc/lib
 QUIRC_SRC = $(QUIRC_DIR)/quirc.c $(QUIRC_DIR)/decode.c $(QUIRC_DIR)/identify.c $(QUIRC_DIR)/version_db.c
 # The wrapper (demo) plus the portable decoder logic moved into src/qrcode/.
 RELIC_QR_DECODE_DIR = ../src/qrcode
-QR_DECODE_SRC = src/qr_decode_wasm.c $(RELIC_QR_DECODE_DIR)/qr_decode.c $(QUIRC_SRC) \
-	$(RELIC_COMPRESSION_DIR)/share_base32.c $(RELIC_COMPRESSION_DIR)/base32.c
-QR_DECODE_INC = -I$(RELIC_QR_DECODE_DIR) -I$(QUIRC_DIR) -I$(RELIC_COMPRESSION_DIR) -I$(RELIC_SSS_DIR)
+QR_DECODE_SRC = src/qr_decode_wasm.c $(RELIC_QR_DECODE_DIR)/qr_decode.c $(QUIRC_SRC)
+QR_DECODE_INC = -I$(RELIC_QR_DECODE_DIR) -I$(QUIRC_DIR)
 QR_DECODE_OUT_WASM = $(OUT_DIR)/qr_decode.wasm
 QR_DECODE_OUT_JS = $(OUT_DIR)/qr_decode.js
 
 .PHONY: all clean
 
-all: $(OUT_JS) $(OUT_WASM) $(QR_OUT_JS) $(QR_OUT_WASM) $(QR_DECODE_OUT_JS) $(QR_DECODE_OUT_WASM)
+all: $(OUT_JS) $(OUT_WASM) $(QR_OUT_JS) $(QR_OUT_WASM) $(COMPRESSION_OUT_JS) $(COMPRESSION_OUT_WASM) $(QR_DECODE_OUT_JS) $(QR_DECODE_OUT_WASM)
 
 $(OUT_DIR):
 	mkdir -p $(OUT_DIR)
@@ -94,8 +110,11 @@ $(OUT_JS) $(OUT_WASM): $(SRC) | $(OUT_DIR)
 $(QR_OUT_JS) $(QR_OUT_WASM): $(QR_SRC) | $(OUT_DIR)
 	$(EMCC) $(CFLAGS) $(QR_INC) $(QR_WASM_FLAGS) -o $(QR_OUT_JS) $(QR_SRC)
 
+$(COMPRESSION_OUT_JS) $(COMPRESSION_OUT_WASM): $(COMPRESSION_SRC) | $(OUT_DIR)
+	$(EMCC) $(CFLAGS) $(COMPRESSION_INC) $(COMPRESSION_WASM_FLAGS) -o $(COMPRESSION_OUT_JS) $(COMPRESSION_SRC)
+
 $(QR_DECODE_OUT_JS) $(QR_DECODE_OUT_WASM): $(QR_DECODE_SRC) | $(OUT_DIR)
 	$(EMCC) $(CFLAGS) $(QR_DECODE_INC) $(QR_DECODE_WASM_FLAGS) -o $(QR_DECODE_OUT_JS) $(QR_DECODE_SRC)
 
 clean:
-	rm -f $(OUT_JS) $(OUT_WASM) $(QR_OUT_JS) $(QR_OUT_WASM) $(QR_DECODE_OUT_JS) $(QR_DECODE_OUT_WASM)
+	rm -f $(OUT_JS) $(OUT_WASM) $(QR_OUT_JS) $(QR_OUT_WASM) $(COMPRESSION_OUT_JS) $(COMPRESSION_OUT_WASM) $(QR_DECODE_OUT_JS) $(QR_DECODE_OUT_WASM)

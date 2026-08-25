@@ -7,11 +7,8 @@
 // demo/Makefile) and is never added to the ESP32 firmware build.
 
 #include "qr_decode.h"
-#include "share_base32.h"
 
 #include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
 
 /**
  * @brief Decode a QR code from a grayscale image.
@@ -32,43 +29,5 @@ int wasm_qr_decode(const uint8_t *gray, int width, int height,
                    char *out, size_t out_size)
 {
     return qr_decode_gray(gray, width, height, out, out_size);
-}
-
-/**
- * @brief Decompress a base32 QR payload ("x:base32...") back to hex ("x:hex...").
- *
- * Reuses the same share_base32 codec as the embedded firmware so the demo can
- * consume QR codes produced by the device (and vice-versa).
- *
- * @param b32_text  Null-terminated share text ("x:base32...").
- * @return          Malloc'd hex text (free with _free), or NULL on error.
- */
-char *wasm_share_from_base32(const char *b32_text)
-{
-    char *ret = NULL;
-
-    if (b32_text == NULL)
-    {
-        goto exit;
-    }
-
-    /* "x:" prefix (up to 3 digits + ':') + hex payload (2 * 256) + NUL. */
-    const size_t hex_len = SSS_MAX_SECRET_LEN * 2 + 5;
-    char *out = malloc(hex_len);
-    if (out == NULL)
-    {
-        goto exit;
-    }
-
-    if (share_from_base32(b32_text, strlen(b32_text), out, hex_len) != 0)
-    {
-        free(out);
-        goto exit;
-    }
-
-    ret = out;
-
-exit:
-    return ret;
 }
 

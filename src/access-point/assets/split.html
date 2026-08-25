@@ -15,6 +15,10 @@
         <h2>Shamir's Secret Encryption</h2>
         <p class="desc">Enter the secret you wish to encrypt using Shamir's Secret Sharing scheme. Your secret will be
             split into 5 shares. 3 are necessary to reconstruct the secret.</p>
+        <div class="checkbox-row">
+            <input type="checkbox" id="bip-compression" class="bip-compression">
+            <label for="bip-compression">BIP-39 Compression (<span class="tooltip" data-tooltip="if your secret is a seed phrase (BIP-39)">?</span>)</label>
+        </div>
         <div class="test-box">
             <input type="text" id="msg-input" class="msg-input" placeholder="Enter your secret..." maxlength="256">
             <button id="msg-btn" class="msg-btn">Encrypt</button>

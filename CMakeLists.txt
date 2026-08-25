@@ -41,6 +41,8 @@ else()
       src/sss/sss.c
       src/compression/base32.c
       src/compression/share_base32.c
+      src/compression/bip39.c
+      src/compression/bip39_words.c
       src/qrcode/qr_encode.c
       src/svg/qrcode_to_svg.c
   )
@@ -76,9 +78,13 @@ else()
     )
   endif()
 
-  # Auto-generate page_captive.h from assets (HTML + CSS)
+  # Auto-generate page_captive.h from assets (HTML + CSS).
+  # Generated into the *build* directory (per-board) rather than the shared
+  # assets directory: the QR_DECODE_SERVER / QR_MAX_DIM flags baked into the
+  # page differ per board, so a shared file would go stale when building
+  # several boards in sequence.
   set(ASSETS_DIR    ${CMAKE_CURRENT_SOURCE_DIR}/src/access-point/assets)
-  set(ASSETS_OUTPUT ${ASSETS_DIR}/page_captive.h)
+  set(ASSETS_OUTPUT ${CMAKE_BINARY_DIR}/page_captive.h)
 
   if(CONFIG_RELIC_QR_DECODE_SERVER)
     set(QR_DECODE_SERVER_FLAG 1)
@@ -108,6 +114,7 @@ else()
   target_sources(app PRIVATE ${ASSETS_OUTPUT})
 
   target_include_directories(app PRIVATE
+      ${CMAKE_BINARY_DIR}
       src/access-point/http/inc
       src/access-point/net/inc
       src/access-point/wifi/inc

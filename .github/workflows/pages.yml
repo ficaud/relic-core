@@ -57,6 +57,8 @@ jobs:
           cp demo/scripts/sss.wasm                  pages/scripts/
           cp demo/scripts/qr.js                     pages/scripts/
           cp demo/scripts/qr.wasm                   pages/scripts/
+          cp demo/scripts/compression.js            pages/scripts/
+          cp demo/scripts/compression.wasm          pages/scripts/
           cp demo/scripts/qr_decode.js              pages/scripts/
           cp demo/scripts/qr_decode.wasm            pages/scripts/
           cp src/access-point/assets/scripts/split.js   pages/scripts/

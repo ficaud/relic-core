@@ -35,6 +35,18 @@
         document.head.appendChild(script);
     })();
 
+    /* ── Compression codec WASM bootstrap (share base32 + BIP-39) ── */
+    var codecModule = null;
+    (function () {
+        var script = document.createElement('script');
+        script.src = 'scripts/compression.js';       // relative to HTML page
+        script.onload = function () {
+            CompressionWasm().then(function (m) { codecModule = m; });
+        };
+        script.onerror = function () { /* fetch fallback */ };
+        document.head.appendChild(script);
+    })();
+
     /* ── Shared helpers ── */
     var msgInput = document.getElementById('msg-input');
     var msgBtn = document.getElementById('msg-btn');
@@ -84,15 +96,15 @@
         }
 
         /* Try WASM QR generator first (client-side, offline-capable) */
-        if (qrModule && qrModule._wasm_qr_generate && qrModule._wasm_share_to_base32) {
+        if (qrModule && qrModule._wasm_qr_generate && codecModule && codecModule._wasm_share_to_base32) {
             try {
                 /* Compress the hex share to base32 (same codec as the device)
                    to shrink the QR code. */
-                var b32Ptr = qrModule.ccall('wasm_share_to_base32', 'number', ['string'], [shareText]);
+                var b32Ptr = codecModule.ccall('wasm_share_to_base32', 'number', ['string'], [shareText]);
                 if (b32Ptr) {
-                    var b32Text = qrModule.UTF8ToString(b32Ptr);
+                    var b32Text = codecModule.UTF8ToString(b32Ptr);
                     var svgPtr = qrModule.ccall('wasm_qr_generate', 'number', ['string'], [b32Text]);
-                    qrModule._free(b32Ptr);
+                    codecModule._free(b32Ptr);
                     if (svgPtr) {
                         var svg = qrModule.UTF8ToString(svgPtr);
                         qrModule._wasm_qr_free(svgPtr);
@@ -189,8 +201,8 @@
         return { x: x, len: len, d: data };
     }
 
-    function encryptWasm(msg) {
-        var secretLen = msg.length;
+    function encryptWasm(bytes) {
+        var secretLen = bytes.length;
         var n = 5, k = 3;
 
         var seed = 0;
@@ -207,7 +219,7 @@
         var sharesPtr = Module._malloc(n * sizeofShare());
 
         for (var i = 0; i < secretLen; i++) {
-            Module.setValue(secretPtr + i, msg.charCodeAt(i), 'i8');
+            Module.setValue(secretPtr + i, bytes[i], 'i8');
         }
 
         var ret = Module._sss_split_wasm(secretPtr, secretLen, n, k, sharesPtr);
@@ -225,8 +237,10 @@
     }
 
     /* ── Fetch implementation (device) ── */
-    function encryptFetch(msg) {
-        fetch('/divide?msg=' + encodeURIComponent(msg))
+    function encryptFetch(msg, bip) {
+        var url = '/divide?msg=' + encodeURIComponent(msg);
+        if (bip) url += '&bip=1';
+        fetch(url)
             .then(function (r) {
                 if (!r.ok) throw new Error('HTTP ' + r.status);
                 return r.json();
@@ -235,15 +249,50 @@
             .catch(function (err) { showToast('Error: ' + err.message); });
     }
 
+    /* ── BIP-39 compression helpers (WASM demo) ── */
+    function stringToBytes(s) {
+        var bytes = [];
+        for (var i = 0; i < s.length; i++) {
+            bytes.push(s.charCodeAt(i) & 0xFF);
+        }
+        return bytes;
+    }
+
+    function hexToBytes(hex) {
+        var bytes = [];
+        for (var i = 0; i < hex.length; i += 2) {
+            bytes.push(parseInt(hex.substr(i, 2), 16));
+        }
+        return bytes;
+    }
+
+    function bip39CompressWasm(msg) {
+        if (!codecModule || !codecModule._wasm_bip39_compress) return null;
+        var ptr = codecModule.ccall('wasm_bip39_compress', 'number', ['string'], [msg]);
+        if (!ptr) return null;
+        var hex = codecModule.UTF8ToString(ptr);
+        codecModule._free(ptr);
+        return hex;
+    }
+
     /* ── Entry point ── */
     function encrypt() {
         var msg = msgInput.value;
         if (msg.trim() === '') return;
+        var is_bip39_compression = document.getElementById('bip-compression').checked;
 
         if (useWasm && Module && Module._sss_split_wasm) {
-            encryptWasm(msg);
+            var bytes;
+            if (is_bip39_compression) {
+                var hex = bip39CompressWasm(msg);
+                if (!hex) { showToast('BIP-39 compression failed'); return; }
+                bytes = hexToBytes(hex);
+            } else {
+                bytes = stringToBytes(msg);
+            }
+            encryptWasm(bytes);
         } else {
-            encryptFetch(msg);
+            encryptFetch(msg, is_bip39_compression);
         }
     }
 
