@@ -75,6 +75,26 @@ target_link_libraries(base32_test PRIVATE
 )
 
 # ---------------------------------------------------------------------------
+# bip39_test — BIP-39 seed phrase compression codec tests (standalone)
+# Build with: cmake --build tests/build-native --target bip39_test
+# ---------------------------------------------------------------------------
+add_executable(bip39_test
+    main.cpp
+    test_bip39.cpp
+    ${COMPRESSION_SRC_DIR}/bip39.c                   # BIP-39 compression codec
+    ${COMPRESSION_SRC_DIR}/bip39_words.c             # BIP-39 English wordlist
+)
+
+target_include_directories(bip39_test PRIVATE
+    ${COMPRESSION_SRC_DIR}                       # for bip39.h / bip39_words.h
+)
+
+target_link_libraries(bip39_test PRIVATE
+    GTest::GTest
+    GTest::Main
+)
+
+# ---------------------------------------------------------------------------
 # share_base32_test — Share "x:hex <-> x:base32" codec tests (standalone)
 # Build with: cmake --build tests/build-native --target share_base32_test
 # ---------------------------------------------------------------------------
@@ -151,6 +171,9 @@ add_test(NAME base32_test COMMAND base32_test)
 
 # Launch the share base32 codec unit tests (ShareBase32Test suite).
 add_test(NAME share_base32_test COMMAND share_base32_test)
+
+# Launch the BIP-39 compression codec unit tests (Bip39Test suite).
+add_test(NAME bip39_test COMMAND bip39_test)
 
 # Launch the QR code unit tests (QRCodeTest suite) via the dedicated binary.
 add_test(NAME qrcode_test COMMAND qrcode_test)

@@ -34,10 +34,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         parts = [p for p in path.lstrip('/').split('/') if p]
 
         # Map the WASM demo modules (sss.js/sss.wasm/qr.js/qr.wasm/
-        # qr_decode.js/qr_decode.wasm) from demo/scripts/ into the /scripts/
-        # namespace.
+        # compression.js/compression.wasm/qr_decode.js/qr_decode.wasm) from
+        # demo/scripts/ into the /scripts/ namespace.
         if parts[:1] == ['scripts'] and parts[-1] in ('sss.js', 'sss.wasm',
                                                       'qr.js', 'qr.wasm',
+                                                      'compression.js',
+                                                      'compression.wasm',
                                                       'qr_decode.js',
                                                       'qr_decode.wasm'):
             return os.path.join(WASM_DIR, *parts[1:])

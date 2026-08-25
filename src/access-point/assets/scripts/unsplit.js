@@ -22,6 +22,18 @@
         document.head.appendChild(script);
     })();
 
+    /* ── Compression codec WASM bootstrap (share base32 + BIP-39) ── */
+    var codecModule = null;
+    (function () {
+        var script = document.createElement('script');
+        script.src = 'scripts/compression.js';       // relative to HTML page
+        script.onload = function () {
+            CompressionWasm().then(function (m) { codecModule = m; });
+        };
+        script.onerror = function () { /* fetch fallback */ };
+        document.head.appendChild(script);
+    })();
+
     /* ── QR decode WASM bootstrap (quirc) ──
        Only present in the WASM demo. On the embedded device qr_decode.js does
        not exist, so script.onerror fires and decoding is done on-device via
@@ -103,7 +115,7 @@
     /* ── WASM implementation ── */
     function sizeofShare() { return 264; }
 
-    function reconstructWasm(d, x) {
+    function reconstructWasm(d, x, bip39) {
         var k = d.length;
         var secretLen = d[0].length / 2;
 
@@ -131,14 +143,21 @@
         Module._free(sharesPtr);
         Module._free(secretPtr);
 
+        if (bip39) {
+            var decompressed = bip39DecompressWasm(secret);
+            if (decompressed === null) { showToast('BIP-39 decompression failed'); return; }
+            secret = decompressed;
+        }
+
         resultText.textContent = secret || '(empty)';
         resultBox.classList.remove('hidden');
         showToast('Reconstructed!');
     }
 
     /* ── Fetch implementation (device) ── */
-    function reconstructFetch(d, x) {
+    function reconstructFetch(d, x, bip) {
         var url = '/reconstruct?d=' + d.join(',') + '&x=' + x.join(',');
+        if (bip) url += '&bip=1';
         fetch(url)
             .then(function (r) {
                 if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -151,15 +170,36 @@
             .catch(function (err) { showToast('Error: ' + err.message); });
     }
 
+    /* ── BIP-39 decompression helpers (WASM demo) ── */
+    function bytesToHex(bytes) {
+        var hex = '';
+        for (var i = 0; i < bytes.length; i++) {
+            hex += ('0' + (bytes.charCodeAt(i) & 0xFF).toString(16)).slice(-2);
+        }
+        return hex;
+    }
+
+    function bip39DecompressWasm(secretBytes) {
+        if (!codecModule || !codecModule._wasm_bip39_decompress) return null;
+        var hex = bytesToHex(secretBytes);
+        var ptr = codecModule.ccall('wasm_bip39_decompress', 'number', ['string'], [hex]);
+        if (!ptr) return null;
+        var text = codecModule.UTF8ToString(ptr);
+        codecModule._free(ptr);
+        return text;
+    }
+
     /* ── Entry point ── */
     function reconstruct() {
         var parsed = parseShares();
+        var is_bip39_compression = document.getElementById('bip-compression').checked;
+
         if (parsed.d.length < 2) { showToast('Enter at least 2 shares'); return; }
 
         if (useWasm && Module && Module._sss_combine_wasm) {
-            reconstructWasm(parsed.d, parsed.x);
+            reconstructWasm(parsed.d, parsed.x, is_bip39_compression);
         } else {
-            reconstructFetch(parsed.d, parsed.x);
+            reconstructFetch(parsed.d, parsed.x, is_bip39_compression);
         }
     }
 
@@ -296,11 +336,11 @@
             var raw = qrDecodeModule.UTF8ToString(outPtr, len);
             /* The QR payload is base32-compressed ("x:base32..."); convert it
                back to hex so the reconstruct flow keeps working with hex. */
-            if (qrDecodeModule._wasm_share_from_base32) {
-                var hexPtr = qrDecodeModule.ccall('wasm_share_from_base32', 'number', ['string'], [raw]);
+            if (codecModule && codecModule._wasm_share_from_base32) {
+                var hexPtr = codecModule.ccall('wasm_share_from_base32', 'number', ['string'], [raw]);
                 if (hexPtr) {
-                    text = qrDecodeModule.UTF8ToString(hexPtr);
-                    qrDecodeModule._free(hexPtr);
+                    text = codecModule.UTF8ToString(hexPtr);
+                    codecModule._free(hexPtr);
                 }
             } else {
                 text = raw;
@@ -357,6 +397,52 @@
         return null;
     }
 
+    /* ── Base32 → hex conversion (jsQR path) ──
+       On boards without on-device QR decoding (classic ESP32), jsQR decodes
+       the QR code and returns the raw payload "x:base32...". The other two
+       decode paths (on-device quirc, WASM quirc) already convert it back to
+       "x:hex..."; do the same here in pure JS so /reconstruct keeps
+       consuming hex shares. ── */
+    function shareFromBase32(text) {
+        var B32_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+        var HEX_DIGITS = '0123456789ABCDEF';
+
+        if (!text) return text;
+
+        var colon = text.indexOf(':');
+        if (colon === -1) return text;
+
+        var xPart = text.substring(0, colon);
+        var b32 = text.substring(colon + 1);
+
+        /* Decode unpadded RFC 4648 base32 (case-insensitive). */
+        var bytes = [];
+        var chunk = 0;
+        var bits = 0;
+        for (var i = 0; i < b32.length; i++) {
+            var idx = B32_ALPHABET.indexOf(b32.charAt(i).toUpperCase());
+            if (idx === -1) return text; /* not base32 → leave unchanged */
+
+            chunk = (chunk << 5) | idx;
+            bits += 5;
+            if (bits >= 8) {
+                bits -= 8;
+                bytes.push((chunk >>> bits) & 0xFF);
+                chunk = chunk & ((1 << bits) - 1); /* drop emitted bits */
+            }
+        }
+
+        /* Unused trailing bits of the final character must be zero. */
+        if (bits > 0 && chunk !== 0) return text;
+
+        /* Re-encode the bytes as uppercase hex. */
+        var hex = '';
+        for (var j = 0; j < bytes.length; j++) {
+            hex += HEX_DIGITS[bytes[j] >> 4] + HEX_DIGITS[bytes[j] & 0x0F];
+        }
+        return xPart + ':' + hex;
+    }
+
     /* Sync local decode from a source element (camera frame or image). */
     function decodeLocal(src, naturalW, naturalH) {
         if (qrDecodeModule) {
@@ -364,7 +450,8 @@
             return decodeWithWasm(frame.gray, frame.w, frame.h);
         }
         if (typeof jsQR === 'function') {
-            return decodeWithJsQR(src, naturalW, naturalH);
+            var text = decodeWithJsQR(src, naturalW, naturalH);
+            return text ? shareFromBase32(text) : null;
         }
         return null;
     }

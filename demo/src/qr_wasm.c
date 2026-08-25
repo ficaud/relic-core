@@ -12,11 +12,9 @@
 
 #include "qr_encode.h"
 #include "qrcode_to_svg.h"
-#include "share_base32.h"
 
 #include <stdbool.h>
 #include <stdlib.h>
-#include <string.h>
 
 /* ── Public WASM API ── */
 
@@ -69,41 +67,4 @@ exit:
 void wasm_qr_free(char *ptr)
 {
     free(ptr);
-}
-
-/**
- * @brief Compress a share ("x:hex...") to its base32 QR payload ("x:base32...").
- *
- * Reuses the same share_base32 codec as the embedded firmware so the demo and
- * the device produce byte-identical QR payloads.
- *
- * @param hex_text  Null-terminated share text ("x:hex...").
- * @return          Malloc'd base32 text (free with wasm_qr_free()/_free),
- *                  or NULL on error.
- */
-char *wasm_share_to_base32(const char *hex_text)
-{
-    char *ret = NULL;
-
-    if (hex_text == NULL)
-    {
-        goto exit;
-    }
-
-    char *out = malloc(SHARE_B32_BUF_SIZE + 4); /* "x:" prefix + payload + NUL */
-    if (out == NULL)
-    {
-        goto exit;
-    }
-
-    if (share_to_base32(hex_text, out, SHARE_B32_BUF_SIZE + 4) != 0)
-    {
-        free(out);
-        goto exit;
-    }
-
-    ret = out;
-
-exit:
-    return ret;
 }

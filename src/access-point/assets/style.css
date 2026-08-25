@@ -53,6 +53,92 @@ h2 {
     padding: 0 4px;
 }
 
+/* ── Checkbox (BIP-39 compression) ── */
+.checkbox-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    color: #fff;
+}
+
+.checkbox-row label {
+    cursor: pointer;
+    opacity: 0.9;
+    user-select: none;
+}
+
+.bip-compression {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    margin: 0;
+    border: 2px solid rgba(255, 255, 255, 0.7);
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.15);
+    cursor: pointer;
+    position: relative;
+    transition: background 0.2s, border-color 0.2s;
+}
+
+.bip-compression:hover {
+    border-color: #fff;
+}
+
+.bip-compression:checked {
+    background: #fff;
+    border-color: #fff;
+}
+
+.bip-compression:checked::after {
+    content: '';
+    position: absolute;
+    left: 5px;
+    top: 2px;
+    width: 4px;
+    height: 8px;
+    border: solid #764ba2;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+/* ── Tooltip (inline ? hint) ── */
+.tooltip {
+    display: inline-block;
+    position: relative;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.tooltip::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #333;
+    color: #fff;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: normal;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.tooltip:hover::after {
+    opacity: 1;
+    visibility: visible;
+}
+
 .test-box {
     display: flex;
     gap: 8px;
