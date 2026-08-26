@@ -228,3 +228,120 @@ char *wasm_bip39_decompress(const char *hex)
 exit:
     return ret;
 }
+
+/**
+ * @brief Compress a seed phrase + passphrase into a hex string.
+ *
+ * Same as wasm_bip39_compress(), but the seed phrase is followed by the
+ * BIP39_PASSPHRASE_SEPARATOR (';') and an arbitrary passphrase which is kept
+ * verbatim (only the seed phrase words are compressed).
+ *
+ * @param secret  Null-terminated text ("abandon zoo zoo; My Passphrase").
+ * @return        Malloc'd uppercase hex string (free with _free), or NULL on
+ *                error (missing separator, invalid word, ...).
+ */
+char *wasm_bip39_compress_passphrase(const char *secret)
+{
+    static const char hex_digits[] = "0123456789ABCDEF";
+    char *ret = NULL;
+
+    if (secret == NULL)
+    {
+        goto exit;
+    }
+
+    size_t in_len = strlen(secret);
+
+    // compress the seed phrase (and the passphrase)
+    uint8_t raw[SSS_MAX_SECRET_LEN];
+    size_t out_len = 0;
+    if (bip39_compress_passphrase(secret, in_len, raw, sizeof(raw), &out_len) != 0)
+    {
+        goto exit;
+    }
+
+    // create the hex string
+    char *hex = malloc(out_len * 2 + 1);
+    if (hex == NULL)
+    {
+        goto exit;
+    }
+
+    // convert the rw byts into hex string
+    for (size_t i = 0; i < out_len; i++)
+    {
+        hex[i * 2] = hex_digits[raw[i] >> 4];
+        hex[i * 2 + 1] = hex_digits[raw[i] & 0x0F];
+    }
+    hex[out_len * 2] = '\0';
+
+    ret = hex;
+
+exit:
+    return ret;
+}
+
+/**
+ * @brief Decompress a hex-encoded seed phrase + passphrase back to its text.
+ *
+ * The input is the hex string produced by wasm_bip39_compress_passphrase().
+ * The output is the canonical text "<seed words> ; <passphrase>".
+ *
+ * @param hex  Null-terminated hex string.
+ * @return     Malloc'd seed phrase (free with _free), or NULL on error.
+ */
+char *wasm_bip39_decompress_passphrase(const char *hex)
+{
+    char *ret = NULL;
+
+    if (hex == NULL)
+    {
+        goto exit;
+    }
+
+    size_t hex_len = strlen(hex);
+    if ((hex_len % 2) != 0)
+    {
+        goto exit;
+    }
+
+    size_t in_len = hex_len / 2;
+    if (in_len > SSS_MAX_SECRET_LEN)
+    {
+        goto exit;
+    }
+
+    // convert the hex string into rw bytes
+    uint8_t raw[SSS_MAX_SECRET_LEN];
+    for (size_t i = 0; i < in_len; i++)
+    {
+        int hi = hex_nibble(hex[i * 2]);
+        int lo = hex_nibble(hex[i * 2 + 1]);
+        if (hi < 0 || lo < 0)
+        {
+            goto exit;
+        }
+        raw[i] = (uint8_t)((hi << 4) | lo);
+    }
+
+    // decompress the seed phrase + passphrase
+    char out[SSS_MAX_SECRET_LEN * 2];
+    size_t out_len = 0;
+    if (bip39_decompress_passphrase(raw, in_len, out, sizeof(out), &out_len) != 0)
+    {
+        goto exit;
+    }
+
+    // copy the decompressed seed phrase + passphrase
+    char *copy = malloc(out_len + 1);
+    if (copy == NULL)
+    {
+        goto exit;
+    }
+    memcpy(copy, out, out_len + 1);
+
+    ret = copy;
+
+exit:
+    return ret;
+}

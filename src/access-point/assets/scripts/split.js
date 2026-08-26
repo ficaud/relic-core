@@ -239,7 +239,7 @@
     /* ── Fetch implementation (device) ── */
     function encryptFetch(msg, bip) {
         var url = '/divide?msg=' + encodeURIComponent(msg);
-        if (bip) url += '&bip=1';
+        if (bip) url += '&bip=' + bip;
         fetch(url)
             .then(function (r) {
                 if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -275,26 +275,53 @@
         return hex;
     }
 
+    function bip39CompressPassphraseWasm(msg) {
+        if (!codecModule || !codecModule._wasm_bip39_compress_passphrase) return null;
+        var ptr = codecModule.ccall('wasm_bip39_compress_passphrase', 'number', ['string'], [msg]);
+        if (!ptr) return null;
+        var hex = codecModule.UTF8ToString(ptr);
+        codecModule._free(ptr);
+        return hex;
+    }
+
     /* ── Entry point ── */
+    function bipMode() {
+        var compression = document.getElementById('bip-compression').checked;
+        var passphrase = document.getElementById('bip-passphrase').checked;
+        if (!compression) return 0;
+        return passphrase ? 2 : 1;
+    }
+
     function encrypt() {
         var msg = msgInput.value;
         if (msg.trim() === '') return;
-        var is_bip39_compression = document.getElementById('bip-compression').checked;
+        var mode = bipMode();
 
         if (useWasm && Module && Module._sss_split_wasm) {
             var bytes;
-            if (is_bip39_compression) {
+            if (mode === 1) {
                 var hex = bip39CompressWasm(msg);
                 if (!hex) { showToast('BIP-39 compression failed'); return; }
                 bytes = hexToBytes(hex);
+            } else if (mode === 2) {
+                var hexPass = bip39CompressPassphraseWasm(msg);
+                if (!hexPass) { showToast('BIP-39 compression failed'); return; }
+                bytes = hexToBytes(hexPass);
             } else {
                 bytes = stringToBytes(msg);
             }
             encryptWasm(bytes);
         } else {
-            encryptFetch(msg, is_bip39_compression);
+            encryptFetch(msg, mode);
         }
     }
+
+    var bipCompressionCheckbox = document.getElementById('bip-compression');
+    var bipPassphraseCheckbox = document.getElementById('bip-passphrase');
+    bipCompressionCheckbox.addEventListener('change', function () {
+        bipPassphraseCheckbox.disabled = !bipCompressionCheckbox.checked;
+        if (!bipCompressionCheckbox.checked) bipPassphraseCheckbox.checked = false;
+    });
 
     msgBtn.addEventListener('click', encrypt);
     msgInput.addEventListener('keydown', function (e) {

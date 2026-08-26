@@ -20,7 +20,10 @@
             <input type="checkbox" id="bip-compression" class="bip-compression">
             <label for="bip-compression">BIP-39 Compression (<span class="tooltip" data-tooltip="if your secret is a seed phrase (BIP-39)">?</span>)</label>
         </div>
-
+        <div class="checkbox-row">
+            <input type="checkbox" id="bip-passphrase" class="bip-compression" disabled>
+            <label for="bip-passphrase">With passphrase (<span class="tooltip" data-tooltip="if you have a passphrase after your seed phrase (e.g. 'abandon zoo zoo; my_passphrase')">?</span>)</label>
+        </div>
         <div id="share-rows">
             <div class="share-row">
                 <input type="number" class="x-input" value="1" min="1" max="255" placeholder="x">

@@ -438,3 +438,212 @@ TEST_F(Bip39Test, Decompress_OutputTooSmall)
     size_t out_len = 0;
     EXPECT_EQ(bip39_decompress(in.data(), in.size(), out, sizeof(out), &out_len), -ENOSPC);
 }
+
+// ===========================================================================
+// Passphrase compression / decompression
+// ===========================================================================
+
+namespace
+{
+
+/**
+ * @brief Return the byte-compressed form of a seed phrase + passphrase.
+ */
+std::vector<uint8_t> compressPassphrase(const std::string &phrase)
+{
+    std::vector<uint8_t> out(256);
+    size_t out_len = 0;
+    int ret = bip39_compress_passphrase(phrase.c_str(), phrase.size(), out.data(), out.size(), &out_len);
+    if (ret != 0)
+    {
+        return {};
+    }
+    out.resize(out_len);
+    return out;
+}
+
+/**
+ * @brief Decompress a passphrase-aware byte sequence back to text.
+ */
+std::string decompressPassphrase(const std::vector<uint8_t> &in)
+{
+    std::string out(512, '\0');
+    size_t out_len = 0;
+    int ret = bip39_decompress_passphrase(in.data(), in.size(), &out[0], out.size(), &out_len);
+    if (ret != 0)
+    {
+        return {};
+    }
+    out.resize(out_len);
+    return out;
+}
+
+} // namespace
+
+TEST_F(Bip39Test, Passphrase_Compress_Format)
+{
+    // "abandon zoo zoo; Hi" -> word_count=3, indices [0, 2047, 2047], passphrase "Hi".
+    const char *phrase = "abandon zoo zoo; Hi";
+    std::vector<uint8_t> out = compressPassphrase(phrase);
+
+    std::vector<uint8_t> expected = {
+        0x03,             // word_count
+        0x00, 0x00,       // abandon (0)
+        0xFF, 0x07,       // zoo (2047)
+        0xFF, 0x07,       // zoo (2047)
+        0x48, 0x69,       // "Hi"
+    };
+
+    ASSERT_EQ(out.size(), expected.size());
+    for (size_t i = 0; i < expected.size(); i++)
+    {
+        EXPECT_EQ(out[i], expected[i]) << "byte " << i;
+    }
+}
+
+TEST_F(Bip39Test, Passphrase_RoundTrip)
+{
+    struct
+    {
+        const char *input;
+        const char *expected;
+    } cases[] = {
+        {"abandon zoo zoo; My Passphrase!", "abandon zoo zoo ; My Passphrase!"},
+        {"abandon zoo zoo; a;b;c", "abandon zoo zoo ; a;b;c"},
+        {"abandon zoo zoo;", "abandon zoo zoo"},
+        {"abandon; ", "abandon"},
+        {" ability abstract ;  leading and trailing  ", "ability abstract ; leading and trailing"},
+    };
+
+    for (const auto &c : cases)
+    {
+        std::vector<uint8_t> compressed = compressPassphrase(c.input);
+        ASSERT_FALSE(compressed.empty()) << c.input;
+        EXPECT_EQ(decompressPassphrase(compressed), c.expected) << c.input;
+    }
+}
+
+TEST_F(Bip39Test, Passphrase_RoundTrip_UTF8)
+{
+    const char *phrase = "abandon zoo zoo; p\u00e4ssphrase \u00e9\u00e8";
+    std::vector<uint8_t> compressed = compressPassphrase(phrase);
+    ASSERT_FALSE(compressed.empty());
+
+    std::string recovered = decompressPassphrase(compressed);
+    EXPECT_EQ(recovered, "abandon zoo zoo ; p\u00e4ssphrase \u00e9\u00e8");
+}
+
+TEST_F(Bip39Test, Passphrase_RoundTrip_MaxWords)
+{
+    // 24 words + passphrase.
+    std::string phrase;
+    for (int i = 0; i < SEEDPHRASE_MAX_WORDS_COUNT; i++)
+    {
+        if (i > 0)
+        {
+            phrase += ' ';
+        }
+        phrase += "abandon";
+    }
+    phrase += "; a passphrase";
+
+    std::vector<uint8_t> compressed = compressPassphrase(phrase);
+    ASSERT_FALSE(compressed.empty());
+    EXPECT_EQ(compressed[0], SEEDPHRASE_MAX_WORDS_COUNT);
+
+    std::string recovered = decompressPassphrase(compressed);
+    std::string expected;
+    for (int i = 0; i < SEEDPHRASE_MAX_WORDS_COUNT; i++)
+    {
+        if (i > 0)
+        {
+            expected += ' ';
+        }
+        expected += "abandon";
+    }
+    expected += " ; a passphrase";
+    EXPECT_EQ(recovered, expected);
+}
+
+TEST_F(Bip39Test, Passphrase_Compress_NoSeparator)
+{
+    std::vector<uint8_t> out(256);
+    size_t out_len = 0;
+    EXPECT_EQ(bip39_compress_passphrase("abandon zoo zoo", 15, out.data(), out.size(), &out_len), -EINVAL);
+}
+
+TEST_F(Bip39Test, Passphrase_Compress_EmptySeed)
+{
+    std::vector<uint8_t> out(256);
+    size_t out_len = 0;
+    EXPECT_EQ(bip39_compress_passphrase("; pass", 6, out.data(), out.size(), &out_len), -EINVAL);
+}
+
+TEST_F(Bip39Test, Passphrase_Compress_InvalidSeedWord)
+{
+    std::vector<uint8_t> out(256);
+    size_t out_len = 0;
+    EXPECT_EQ(bip39_compress_passphrase("abandon notaword; pass", 22, out.data(), out.size(), &out_len), -EINVAL);
+}
+
+TEST_F(Bip39Test, Passphrase_Compress_TooManyWords)
+{
+    std::string phrase;
+    for (int i = 0; i < SEEDPHRASE_MAX_WORDS_COUNT + 1; i++)
+    {
+        if (i > 0)
+        {
+            phrase += ' ';
+        }
+        phrase += "abandon";
+    }
+    phrase += "; pass";
+
+    std::vector<uint8_t> out(256);
+    size_t out_len = 0;
+    EXPECT_EQ(bip39_compress_passphrase(phrase.c_str(), phrase.size(), out.data(), out.size(), &out_len), -EINVAL);
+}
+
+TEST_F(Bip39Test, Passphrase_Compress_OutputTooSmall)
+{
+    uint8_t out[4];
+    size_t out_len = 0;
+    EXPECT_EQ(bip39_compress_passphrase("abandon zoo zoo; Hi", 19, out, sizeof(out), &out_len), -ENOSPC);
+}
+
+TEST_F(Bip39Test, Passphrase_Decompress_Errors)
+{
+    std::string out(512, '\0');
+    size_t out_len = 0;
+
+    // Null pointers.
+    std::vector<uint8_t> ok = {0x01, 0x00, 0x00};
+    EXPECT_EQ(bip39_decompress_passphrase(nullptr, ok.size(), &out[0], out.size(), &out_len), -EINVAL);
+    EXPECT_EQ(bip39_decompress_passphrase(ok.data(), 0, &out[0], out.size(), &out_len), -EINVAL);
+    EXPECT_EQ(bip39_decompress_passphrase(ok.data(), ok.size(), nullptr, out.size(), &out_len), -EINVAL);
+    EXPECT_EQ(bip39_decompress_passphrase(ok.data(), ok.size(), &out[0], out.size(), nullptr), -EINVAL);
+
+    // word_count == 0.
+    std::vector<uint8_t> zero_words = {0x00};
+    EXPECT_EQ(bip39_decompress_passphrase(zero_words.data(), zero_words.size(), &out[0], out.size(), &out_len), -EINVAL);
+
+    // word_count > max (25).
+    std::vector<uint8_t> too_many = {SEEDPHRASE_MAX_WORDS_COUNT + 1};
+    EXPECT_EQ(bip39_decompress_passphrase(too_many.data(), too_many.size(), &out[0], out.size(), &out_len), -EINVAL);
+
+    // Truncated index bytes (word_count=2 needs 5 bytes, only 3 given).
+    std::vector<uint8_t> truncated = {0x02, 0x00, 0x00};
+    EXPECT_EQ(bip39_decompress_passphrase(truncated.data(), truncated.size(), &out[0], out.size(), &out_len), -EINVAL);
+
+    // Index out of range (2048).
+    std::vector<uint8_t> bad_index = {0x01, 0x00, 0x08};
+    EXPECT_EQ(bip39_decompress_passphrase(bad_index.data(), bad_index.size(), &out[0], out.size(), &out_len), -EINVAL);
+}
+
+TEST_F(Bip39Test, Passphrase_Decompress_OutputTooSmall)
+{
+    std::vector<uint8_t> in = {0x01, 0x00, 0x00, 'H', 'i'}; // "abandon ; Hi" needs more than 4 bytes
+    char out[4];
+    size_t out_len = 0;
+    EXPECT_EQ(bip39_decompress_passphrase(in.data(), in.size(), out, sizeof(out), &out_len), -ENOSPC);
+}

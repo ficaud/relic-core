@@ -25,11 +25,11 @@
 #if defined(CONFIG_RELIC_QR_DECODE_SERVER)
 #include "qr_decode.h"
 #endif
+#include "bip39.h"
 #include "qr_encode.h"
 #include "qrcode_to_svg.h"
-#include "sss.h"
 #include "share_base32.h"
-#include "bip39.h"
+#include "sss.h"
 
 #include <ctype.h>
 #include <stdio.h>
@@ -70,7 +70,10 @@ static void url_decode(char *dst, const char *src, size_t dst_size);
  *
  * @return 0 on success, negative on error.
  */
-static int handler_shamir_split(const uint8_t *secret, size_t secret_len, struct sss_share *shares_out, size_t *shares_count);
+static int handler_shamir_split(const uint8_t *secret,
+                                size_t secret_len,
+                                struct sss_share *shares_out,
+                                size_t *shares_count);
 
 /**
  * @brief Parse entry shares from query parameters.
@@ -266,12 +269,27 @@ const char *handler_divide(const struct http_request *req)
             const uint8_t *secret = (const uint8_t *)msg_buf;
             size_t secret_len = strlen(msg_buf);
 
-            uint8_t compressed[SEEDPHRASE_MAX_WORDS_COUNT * 2];
+            uint8_t compressed[SSS_MAX_SECRET_LEN];
             char bip_buf[8];
-            if (get_query_param(query, "bip", bip_buf, sizeof(bip_buf)) == 0 && strcmp(bip_buf, "1") == 0)
+            if (get_query_param(query, "bip", bip_buf, sizeof(bip_buf)) == 0)
             {
                 size_t out_len = 0;
-                if (bip39_compress(msg_buf, secret_len, compressed, sizeof(compressed), &out_len) != 0)
+                int rc;
+
+                if (strcmp(bip_buf, BIP_MODE_CLASSIC) == 0)
+                {
+                    rc = bip39_compress(msg_buf, secret_len, compressed, sizeof(compressed), &out_len);
+                }
+                else if (strcmp(bip_buf, BIP_MODE_PASSPHRASE) == 0)
+                {
+                    rc = bip39_compress_passphrase(msg_buf, secret_len, compressed, sizeof(compressed), &out_len);
+                }
+                else
+                {
+                    rc = -EINVAL;
+                }
+
+                if (rc != 0)
                 {
                     LOG_ERR("BIP-39 compression failed");
                     goto exit;
@@ -359,14 +377,29 @@ const char *handler_reconstruct(const struct http_request *req)
     const char *secret_text = (const char *)secret;
 
     /* Optional BIP-39 decompression: the reconstructed secret is a compact
-       binary form of a seed phrase; expand it back to the words. */
+       binary form of a seed phrase (and optionally a passphrase); expand it
+       back to the text form. */
     char bip_buf[8];
-    if (get_query_param(query, "bip", bip_buf, sizeof(bip_buf)) == 0 && strcmp(bip_buf, "1") == 0)
+    if (get_query_param(query, "bip", bip_buf, sizeof(bip_buf)) == 0)
     {
-        static char decompressed[SEEDPHRASE_MAX_WORDS_COUNT * SEEDPHRASE_MAX_WORD_LEN +
-                                 SEEDPHRASE_MAX_WORDS_COUNT + 1];
+        static char decompressed[SSS_MAX_SECRET_LEN * 2];
         size_t out_len = 0;
-        if (bip39_decompress(secret, shares[0].len, decompressed, sizeof(decompressed), &out_len) != 0)
+        int rc;
+
+        if (strcmp(bip_buf, BIP_MODE_CLASSIC) == 0)
+        {
+            rc = bip39_decompress(secret, shares[0].len, decompressed, sizeof(decompressed), &out_len);
+        }
+        else if (strcmp(bip_buf, BIP_MODE_PASSPHRASE) == 0)
+        {
+            rc = bip39_decompress_passphrase(secret, shares[0].len, decompressed, sizeof(decompressed), &out_len);
+        }
+        else
+        {
+            rc = -EINVAL;
+        }
+
+        if (rc != 0)
         {
             LOG_ERR("BIP-39 decompression failed");
             ret = http_responses_list[HTTP_RESPONSE_INTERNAL_SERVER_ERROR];
@@ -595,7 +628,10 @@ static void url_decode(char *dst, const char *src, size_t dst_size)
     dst[i] = '\0';
 }
 
-static int handler_shamir_split(const uint8_t *secret, size_t secret_len, struct sss_share *shares_out, size_t *shares_count)
+static int handler_shamir_split(const uint8_t *secret,
+                                size_t secret_len,
+                                struct sss_share *shares_out,
+                                size_t *shares_count)
 {
     int ret = -1; // error by default
     static struct sss_share shares[SSS_N]; // local buffer for shares
