@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-08-27
+
+### added
+- `bip-39` : pass phrase in BIP-39 compression which means you can add a pass phrases at the end of the seed phrase in BIP-39 compression mode ([#52](https://github.com/ficaud/relic-core/issues/52)).
+- `CODE_OF_CONDUCT.md` `SECURITY.md` : code of conduct and security policy files
+- `.gitignore` : .private/ folder to get notes and others infos that are not supposed to be pushed.
+
+### changed
+- `license` : add the GPLv3 license to all files that were not already licensed
+- `CONTRIBUTING.md` : update the contribution guidelines by adding commit convention, pull request rules and coding style.
+- `Dockerfile` : added `fd-find` to use nvim explorer to find files faster
+
 ## [1.5.0] - 2026-08-26
 
 ### added
