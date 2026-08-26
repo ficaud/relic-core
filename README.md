@@ -80,3 +80,7 @@ Please refer to the [relic-core docker doc](doc/docker.md) for more information.
 ## Contribution
 
 In [CONTRIBUTING](CONTRIBUTING.md), you'll find all the required information to contribute to the project. Please also read the [code of conduct](CODE_OF_CONDUCT.md) and the [vulnerability](SECURITY.md) policy.
+
+## License
+
+Relic Core is licensed under the [GNU General Public License v3.0](LICENSE) (`GPL-3.0-or-later`).
