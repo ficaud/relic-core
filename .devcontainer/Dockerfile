@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 # Devcontainer for Zephyr RTOS development on ESP32-S3-DevKitC-1
 # Includes: Zephyr SDK (xtensa-esp32s3 toolchain), west, esptool,

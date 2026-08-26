@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Entrypoint — Adjusts the container user UID/GID to match the workspace
 # volume owner, so that 'west init', 'west build' etc. work regardless
