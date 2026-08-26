@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Docker build context exclusions.
 #
@@ -44,7 +44,7 @@ tests/
 
 # Documentation (only doc/img/relic-logo_icone.svg is needed, copied explicitly)
 doc/commands.md
-doc/contribution.md
+CONTRIBUTING.md
 doc/img/split.PNG
 doc/img/unsplit.PNG
 doc/img/success_flashing.PNG

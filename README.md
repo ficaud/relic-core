@@ -79,4 +79,4 @@ Please refer to the [relic-core docker doc](doc/docker.md) for more information.
 
 ## Contribution
 
-In [contribution](doc/contribution.md), you'll find all the required information to build and flash the Relic Core ESP32 firmware.
+In [CONTRIBUTING](CONTRIBUTING.md), you'll find all the required information to build and flash the Relic Core ESP32 firmware.

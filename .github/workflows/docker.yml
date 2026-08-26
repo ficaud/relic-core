@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Docker — Build and push the Relic Core WASM demo image to GitHub Container
 # Registry (GHCR). Produces multi-arch images (linux/amd64, linux/arm64,

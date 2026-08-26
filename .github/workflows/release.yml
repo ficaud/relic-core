@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Release workflow — Build le firmware et crée une GitHub Release
 # avec les artefacts de compilation (zephyr.bin, etc.).
