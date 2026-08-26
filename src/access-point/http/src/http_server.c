@@ -78,7 +78,6 @@ int http_server_start(void)
 
 int http_server_stop(void)
 {
-    /* TODO : implémenter un flag d'arrêt + k_thread_abort() */
     return 0;
 }
 

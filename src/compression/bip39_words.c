@@ -8,10 +8,28 @@
  * @author Julien F.
  * @date 2026-08-25
  *
- * @details Sorted official BIP-39 English wordlist, sourced from the
- *          bitcoin/bips repository (bip-0039/english.txt, MIT license).
- *          Everything is const, so the linker places it in the .rodata
- *          section of the ESP32 internal flash.
+ * @details Sorted official BIP-39 English wordlist. Everything is const, so
+ *          the linker places it in the .rodata section of the ESP32 internal
+ *          flash.
+ *
+ * @license
+ *          This file mixes two parts governed by different licenses:
+ *
+ *          - The code and data structure (the array declaration and the
+ *            surrounding program logic) is released under the GNU General
+ *            Public License v3.0 or later (GPL-3.0-or-later), consistent with
+ *            the rest of the Relic Core project.
+ *
+ *          - The 2048-word list itself is the official BIP-39 English
+ *            wordlist, reproduced verbatim from the bitcoin/bips repository
+ *            (bip-0039/english.txt). It is a factual list of English words
+ *            and, where applicable, is used under the MIT license of the
+ *            bitcoin/bips repository.
+ *
+ *          The wordlist is therefore NOT re-licensed under the GPL and retains
+ *          its original terms.
+ *
+ *          Source: https://github.com/bitcoin/bips/blob/master/bip-0039/english.txt
  */
 
 #include "bip39_words.h"

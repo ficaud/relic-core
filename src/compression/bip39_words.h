@@ -13,6 +13,12 @@
  *          search (word -> index). The array and the strings are all const,
  *          so the linker places them in the .rodata section of the ESP32
  *          internal flash (memory-mapped, zero DRAM usage).
+ *
+ * @license
+ *          This header (and its implementation) is released under
+ *          GPL-3.0-or-later. The wordlist data defined in bip39_words.c
+ *          originates from the bitcoin/bips repository (bip-0039/english.txt)
+ *          and retains its original MIT terms; see bip39_words.c for details.
  */
 
 #ifndef BIP39_WORDS_H

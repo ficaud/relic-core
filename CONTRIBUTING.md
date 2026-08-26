@@ -17,8 +17,7 @@ header:
 ## Environment Setup
 
 The project ships a dev container that provides a ready-to-use build
-environment. See `doc/commands.md` for the full list of devcontainer
-commands.
+environment.
 
 1. **Build and enter the dev container**
 
