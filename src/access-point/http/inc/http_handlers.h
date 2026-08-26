@@ -2,7 +2,11 @@
 #define ACCESS_POINT_HANDLERS_H
 
 #include "http_router.h"
-
+/// ===========================================================================
+// Definitions
+// ===========================================================================
+#define BIP_MODE_CLASSIC    ("1") // if the bip checkbox is checked without the passphrase
+#define BIP_MODE_PASSPHRASE ("2") // if the bip checkbox is checked with the passphrase
 // ===========================================================================
 // Public function declaration
 // ===========================================================================
