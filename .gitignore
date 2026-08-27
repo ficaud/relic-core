@@ -62,3 +62,5 @@ tests/Testing/Temporary
 /Testing/Temporary
 /pages
 /demo/scripts
+/.private/
+/.ignore
