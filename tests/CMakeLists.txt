@@ -15,6 +15,15 @@ endif()
 find_package(GTest REQUIRED)
 
 # ---------------------------------------------------------------------------
+# Code coverage (gcovr)
+# ---------------------------------------------------------------------------
+option(ENABLE_COVERAGE "Instrument tests with gcov and provide a 'coverage' target" OFF)
+if(ENABLE_COVERAGE)
+    add_compile_options(--coverage)
+    add_link_options(--coverage)
+endif()
+
+# ---------------------------------------------------------------------------
 # sss_ref — dsprenkels/sss (hazmat API) for cross-validation
 # ---------------------------------------------------------------------------
 set(SSS_REF_DIR         ${CMAKE_CURRENT_SOURCE_DIR}/../external/sss)
@@ -180,3 +189,32 @@ add_test(NAME qrcode_test COMMAND qrcode_test)
 
 # Launch the SVG unit tests (SVGTest suite) via the dedicated binary.
 add_test(NAME svg_test COMMAND svg_test)
+
+# ---------------------------------------------------------------------------
+# Coverage report — run the tests then generate a gcovr HTML/XML report.
+#   cmake --build <build-dir> --target coverage
+# Only the sources under src/ are reported (external/sss, stubs and test
+# files are filtered out). bip39_words.c is a generated word-list table and
+# is excluded from the metrics.
+# ---------------------------------------------------------------------------
+if(ENABLE_COVERAGE)
+    find_program(GCOVR_EXECUTABLE gcovr REQUIRED)
+
+    # Absolute, normalized path to the repository root (resolves the "..").
+    get_filename_component(COVERAGE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
+
+    add_custom_target(coverage
+        DEPENDS sss_test base32_test bip39_test share_base32_test qrcode_test svg_test
+        COMMAND ${CMAKE_CTEST_COMMAND} --test-dir ${CMAKE_BINARY_DIR} --output-on-failure --verbose
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/coverage
+        COMMAND ${GCOVR_EXECUTABLE} -r ${COVERAGE_ROOT}
+            --object-directory ${CMAKE_BINARY_DIR}
+            --filter src/.*
+            --exclude .*bip39_words.*
+            --html-details ${CMAKE_BINARY_DIR}/coverage/index.html
+            --xml ${CMAKE_BINARY_DIR}/coverage/coverage.xml
+            --print-summary
+        WORKING_DIRECTORY ${COVERAGE_ROOT}
+        COMMENT "Generating gcovr coverage report"
+        VERBATIM)
+endif()
