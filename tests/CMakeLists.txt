@@ -36,6 +36,7 @@ set(SSS_SRC_DIR         ${CMAKE_CURRENT_SOURCE_DIR}/../src/sss)
 set(QRCODE_SRC_DIR      ${CMAKE_CURRENT_SOURCE_DIR}/../src/qrcode)
 set(SVG_SRC_DIR         ${CMAKE_CURRENT_SOURCE_DIR}/../src/svg)
 set(COMPRESSION_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../src/compression)
+set(QUIRC_DIR           ${CMAKE_CURRENT_SOURCE_DIR}/../external/quirc/lib)
 
 # ---------------------------------------------------------------------------
 # sss_test — Shamir + QR Code tests (combined executable)
@@ -171,6 +172,31 @@ target_link_libraries(svg_test PRIVATE
 )
 
 # ---------------------------------------------------------------------------
+# qr_decode_test — QR Code decoder (qr_decode.c + quirc) tests
+# Build with: cmake --build tests/build-native --target qr_decode_test
+# ---------------------------------------------------------------------------
+add_executable(qr_decode_test
+    main.cpp
+    test_qr_decode.cpp
+    ${QRCODE_SRC_DIR}/qr_decode.c             # Decoder wrapper (our code)
+    ${QUIRC_DIR}/quirc.c                      # quirc core
+    ${QUIRC_DIR}/decode.c
+    ${QUIRC_DIR}/identify.c
+    ${QUIRC_DIR}/version_db.c
+)
+
+target_include_directories(qr_decode_test PRIVATE
+    ${QRCODE_SRC_DIR}                            # for qr_decode.h
+    ${QUIRC_DIR}                                 # for quirc.h
+)
+
+target_link_libraries(qr_decode_test PRIVATE
+    GTest::GTest
+    GTest::Main
+    m                                            # quirc's identify.c uses sqrt()
+)
+
+# ---------------------------------------------------------------------------
 # Register tests with ctest
 # ---------------------------------------------------------------------------
 add_test(NAME sss_test COMMAND sss_test)
@@ -190,6 +216,9 @@ add_test(NAME qrcode_test COMMAND qrcode_test)
 # Launch the SVG unit tests (SVGTest suite) via the dedicated binary.
 add_test(NAME svg_test COMMAND svg_test)
 
+# Launch the QR code decoder unit tests (QRDecodeTest suite).
+add_test(NAME qr_decode_test COMMAND qr_decode_test)
+
 # ---------------------------------------------------------------------------
 # Coverage report — run the tests then generate a gcovr HTML/XML report.
 #   cmake --build <build-dir> --target coverage
@@ -204,7 +233,7 @@ if(ENABLE_COVERAGE)
     get_filename_component(COVERAGE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
 
     add_custom_target(coverage
-        DEPENDS sss_test base32_test bip39_test share_base32_test qrcode_test svg_test
+        DEPENDS sss_test base32_test bip39_test share_base32_test qrcode_test svg_test qr_decode_test
         COMMAND ${CMAKE_CTEST_COMMAND} --test-dir ${CMAKE_BINARY_DIR} --output-on-failure --verbose
         COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/coverage
         COMMAND ${GCOVR_EXECUTABLE} -r ${COVERAGE_ROOT}
