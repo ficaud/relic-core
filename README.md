@@ -33,6 +33,18 @@ See the [full doc](https://ficaud.github.io/relic-hw/) to learn more about the g
 - **Easy flashing** — A browser-based web flasher (Chrome/Edge) flashes the firmware over USB without any technical setup, and even generates a QR code to auto-join the device's Wi-Fi network afterward.
 - **Open source & free** — Licensed under GPL 3.0, with an open development process and publicly available documentation.
 
+## Dependencies
+
+The firmware is built on the following C libraries:
+
+| Library | Version | Used for | Source |
+|---|---|---|---|
+| [Zephyr RTOS](https://github.com/zephyrproject-rtos/zephyr) | v4.4.2 | RTOS kernel, networking, Wi-Fi, logging, RNG. Its modules (`hal_espressif`, `mbedtls`, `tf-psa-crypto`, `zcbor`, `picolibc`, `mcuboot`) are fetched via `west update` — see `west.yml`. | `west.yml` |
+| [quirc](https://github.com/ficaud/relic-quirc) (relic-quirc fork) | v1.2 | On-device QR decoding (`src/qrcode/qr_decode.c`, ESP32-S3 only via `CONFIG_RELIC_QR_DECODE_SERVER`) | git submodule `external/quirc` |
+| [Nayuki QR-Code-generator](https://github.com/nayuki/QR-Code-generator) | — | QR generation (`src/qrcode/qr_encode.c`, reduced build: alphanumeric / ECC LOW only, MIT) | vendored in `src/qrcode/qr_encode.c` |
+
+Zephyr module versions are pinned by the Zephyr v4.4.2 manifest and resolved with `west update`. `external/sss` (dsprenkels/sss) is not a firmware dependency — it is used only to cross-validate the unit tests.
+
 ## How to flash the firmware
 
 1. Open the **[web flasher](https://ficaud.github.io/relic-core/flash.html)** in Chrome or Edge.
@@ -72,7 +84,7 @@ You also have the possibility to generate QR codes with the shares (in the split
 <img src="doc/img/unsplit.PNG" width="250" alt="unsplit tab from relic core">
 </div>
 
-## Run Relic Core the with Docker on a local machine
+## Docker
 
 The WASM demo (the same web UI as the ESP32 captive portal, but running 100% client-side in the browser) is packaged as a Docker image. It works on any platform: **Linux**, **macOS**, **Windows**, and **Raspberry Pi** (arm64 / arm/v7).
 
