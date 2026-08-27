@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.1] - 2026-08-27
+
+### added
+- `AGENTS.md` : ai agents references files to know more about the project ([#47](https://github.com/ficaud/relic-core/issues/47))
+- `test_qr_decode.cpp` : qr decode unitary tests
+- `gcovr` : unitary tests coverage report that is published on github page ([#55](https://github.com/ficaud/relic-core/issues/55))
+
+### changed
+- `README` : added badge that exhibit the current coverage of the unitary tests + table that contains all the external libs dependencies
+
 ## [1.6.0] - 2026-08-27
 
 ### added
