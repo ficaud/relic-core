@@ -13,6 +13,7 @@
 [![Build](https://github.com/ficaud/relic-core/actions/workflows/build.yml/badge.svg)](https://github.com/ficaud/relic-core/actions/workflows/build.yml)
 [![Demo](https://img.shields.io/badge/demo-online-764ba2)](https://ficaud.github.io/relic-core/)
 [![Docs](https://img.shields.io/badge/docs-online-454545)](https://ficaud.github.io/relic-hw/)
+[![Coverage](https://img.shields.io/badge/coverage-online-2ea44f)](https://ficaud.github.io/relic-core/coverage/)
 
 </br>
 </div>
