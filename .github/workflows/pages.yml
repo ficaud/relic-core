@@ -106,6 +106,17 @@ jobs:
 
           ls -la pages/ pages/scripts/
 
+      - name: Generate coverage report
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gcovr libgtest-dev libgmock-dev
+          cmake -S tests -B tests/build-native -DCMAKE_BUILD_TYPE=Debug -DENABLE_COVERAGE=ON
+          cmake --build tests/build-native --parallel
+          cmake --build tests/build-native --target coverage
+          mkdir -p pages/coverage
+          cp -r tests/build-native/coverage/. pages/coverage/
+          ls -la pages/coverage/
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5
         with:

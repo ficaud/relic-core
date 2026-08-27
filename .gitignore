@@ -53,6 +53,12 @@ venv/
 .env
 public.pem
 
+### Code coverage (gcov / gcovr)
+*.gcda
+*.gcno
+*.gcov
+coverage/
+
 ### auto generated captive portal
 /src/access-point/assets/page_captive.h
 CLAUDE.md

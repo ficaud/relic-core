@@ -42,7 +42,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Build and run unit tests
+      - name: Build and run unit tests (with coverage)
         run: |
           docker run --rm \
             -v ${{ github.workspace }}:/workspaces/relic-core \
@@ -51,11 +51,18 @@ jobs:
             bash -c "
               set -e -x
               git submodule update --init --recursive
-              cmake -S tests -B tests/build-native -DCMAKE_BUILD_TYPE=Debug 2>&1
+              cmake -S tests -B tests/build-native -DCMAKE_BUILD_TYPE=Debug -DENABLE_COVERAGE=ON 2>&1
               cmake --build tests/build-native --parallel 2>&1
-              echo '=== Build complete, running tests ==='
-              ctest --test-dir tests/build-native --output-on-failure --verbose 2>&1
+              echo '=== Build complete, running tests + coverage ==='
+              cmake --build tests/build-native --target coverage 2>&1
             "
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v6
+        with:
+          name: coverage-report
+          path: tests/build-native/coverage/
+          if-no-files-found: error
 
   build:
     needs: unitary-tests

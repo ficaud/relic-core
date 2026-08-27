@@ -113,6 +113,37 @@ Each suite is a standalone executable under `build/tests/tests/`:
 ./build/tests/tests/qrcode_test --gtest_filter='QRCodeTest.Encode*:QRCodeTest.Share*'
 ```
 
+## Code Coverage
+
+The tests can be instrumented with `gcov` and summarized with `gcovr`. Only the
+sources under `src/` are reported (`external/sss`, the stubs and the test files
+themselves are excluded), and the generated `bip39_words.c` word-list table is
+left out of the metrics.
+
+### 1. Configure with coverage enabled
+
+```bash
+cmake --preset tests -DENABLE_COVERAGE=ON
+```
+
+### 2. Build, run the tests and generate the report
+
+```bash
+cmake --build build/tests --target coverage
+```
+
+### 3. Open the report
+
+The HTML report is written to `build/tests/coverage/index.html` (a Cobertura XML
+file is also produced at `build/tests/coverage/coverage.xml` for CI tooling).
+
+The report is generated automatically in CI: the `Build` workflow uploads it as
+a downloadable artifact, and the `Pages` workflow publishes it to GitHub Pages
+under `/coverage/`.
+
+> **Note**: coverage relies on GCC's `gcov`, so run it inside the dev container
+> (or any GCC/`gcovr` environment) rather than with the macOS Clang toolchain.
+
 ## Coding Style
 
 - **Formatting**: `.clang-format` follows Zephyr/Linux kernel style (Allman
