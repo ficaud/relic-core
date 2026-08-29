@@ -33,6 +33,10 @@ See the [full doc](https://ficaud.github.io/relic-hw/) to learn more about the g
 - **Easy flashing** — A browser-based web flasher (Chrome/Edge) flashes the firmware over USB without any technical setup, and even generates a QR code to auto-join the device's Wi-Fi network afterward.
 - **Open source & free** — Licensed under GPL 3.0, with an open development process and publicly available documentation.
 
+<br><div align="center">
+<a href="https://makertube.net/w/dX99LqCXLWmRGgNFS9Bdpc"><img src="https://makertube.net/lazy-static/thumbnails/d81ca6bd-54e6-4827-9cef-d7eded62e05a.png" alt="Demo Relic Core" width="70%"></a>
+</div>
+
 ## Dependencies
 
 The firmware is built on the following C libraries:
