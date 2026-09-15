@@ -64,7 +64,7 @@ QR_OUT_JS = $(OUT_DIR)/qr.js
 COMPRESSION_WASM_FLAGS = \
 	-s MODULARIZE=1 \
 	-s EXPORT_NAME=CompressionWasm \
-	-s EXPORTED_FUNCTIONS=_wasm_share_to_base32,_wasm_share_from_base32,_wasm_bip39_compress,_wasm_bip39_decompress,_wasm_bip39_compress_passphrase,_wasm_bip39_decompress_passphrase,_malloc,_free \
+	-s EXPORTED_FUNCTIONS=_wasm_share_to_base32,_wasm_share_from_base32,_wasm_bip39_compress,_wasm_bip39_decompress,_wasm_bip39_compress_passphrase,_wasm_bip39_decompress_passphrase,_wasm_slip39_compress,_wasm_slip39_decompress,_wasm_slip39_compress_passphrase,_wasm_slip39_decompress_passphrase,_malloc,_free \
 	-s EXPORTED_RUNTIME_METHODS=ccall,cwrap,getValue,setValue,UTF8ToString,stringToUTF8,lengthBytesUTF8 \
 	-s NO_EXIT_RUNTIME=1 \
 	-s FILESYSTEM=0 \
@@ -72,8 +72,10 @@ COMPRESSION_WASM_FLAGS = \
 
 RELIC_COMPRESSION_DIR = ../src/compression
 COMPRESSION_SRC = src/compression_wasm.c \
-	$(RELIC_COMPRESSION_DIR)/share_base32.c $(RELIC_COMPRESSION_DIR)/base32.c $(RELIC_COMPRESSION_DIR)/bip39.c $(RELIC_COMPRESSION_DIR)/bip39_words.c
-COMPRESSION_INC = -I$(RELIC_COMPRESSION_DIR) -I$(RELIC_SSS_DIR)
+	$(RELIC_COMPRESSION_DIR)/encoding/share_base32.c $(RELIC_COMPRESSION_DIR)/encoding/base32.c \
+	$(RELIC_COMPRESSION_DIR)/word_list/wl_codec.c $(RELIC_COMPRESSION_DIR)/word_list/bip39_words.c \
+	$(RELIC_COMPRESSION_DIR)/word_list/slip39_words.c
+COMPRESSION_INC = -I$(RELIC_COMPRESSION_DIR)/encoding -I$(RELIC_COMPRESSION_DIR)/word_list -I$(RELIC_SSS_DIR)
 COMPRESSION_OUT_WASM = $(OUT_DIR)/compression.wasm
 COMPRESSION_OUT_JS = $(OUT_DIR)/compression.js
 

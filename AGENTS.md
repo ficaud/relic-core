@@ -38,7 +38,9 @@ seed phrases, etc.) in a secure, offline way. One specific particularity of Reli
 │   │   ├── base32.c/h      # RFC 4648 base32 (unpadded)
 │   │   ├── share_base32.c/h# "x:hex" <-> "x:base32" share conversion
 │   │   ├── bip39.c/h       # BIP-39 seed phrase (de)compression (+ passphrase)
-│   │   └── bip39_words.c/h # BIP-39 English wordlist (generated)
+│   │   ├── bip39_words.c/h # BIP-39 English wordlist (generated)
+│   │   ├── slip39.c/h      # SLIP-39 mnemonic (de)compression (+ passphrase)
+│   │   └── slip39_words.c/h# SLIP-39 English wordlist (generated)
 │   ├── qrcode/             # QR encode (Nayuki) + decode (quirc, S3-only)
 │   └── svg/                # QR code → SVG conversion
 ├── tests/                  # Google Test unit tests (native, not Zephyr)
@@ -72,6 +74,9 @@ seed phrases, etc.) in a secure, offline way. One specific particularity of Reli
   `x:base32...` QR payload and back. Buffer sizing via `SHARE_B32_BUF_SIZE`.
 - `bip39` — replaces seed-phrase words with their 2-byte little-endian indices;
   `bip39_compress_passphrase` handles an optional `;`-separated passphrase.
+- `slip39` — replaces SLIP-39 mnemonic words with their 2-byte little-endian
+  indices (1024-word list, up to 33 words); mirrors the `bip39` codec with a
+  `slip39_compress_passphrase` variant.
 
 ### `src/qrcode/`
 - `qr_encode.c` — Nayuki QR-Code-generator (reduced build: alphanumeric, ECC LOW).
@@ -95,8 +100,8 @@ Routes defined in `http_router.c`:
 | `/` | `handler_root` | Captive portal home |
 | `/split.html` | `handler_split` | Split page |
 | `/unsplit.html` | `handler_unsplit` | Reconstruct page |
-| `/divide` | `handler_divide` | `?msg=<secret>&bip=<classic|passphrase>` → JSON shares |
-| `/reconstruct` | `handler_reconstruct` | `?d=<hex,hex,...>&x=<x,x,...>&bip=...` → JSON secret |
+| `/divide` | `handler_divide` | `?msg=<secret>&bip=<classic\|passphrase>` or `&slip=<classic\|passphrase>` → JSON shares |
+| `/reconstruct` | `handler_reconstruct` | `?d=<hex,hex,...>&x=<x,x,...>&bip=...` or `&slip=...` → JSON secret |
 | `/qr.svg` | `handler_qr_svg` | `?text=<text>` → QR SVG |
 | `/qr-share.svg` | `handler_qr_share_svg` | `?text=<x:hex...>` → base32-compressed QR SVG |
 | `/qr_decode` | `handler_qr_decode_stream` | POST `?w=&h=` grayscale body (S3-only) |
@@ -150,8 +155,8 @@ Unit tests live in `tests/`, use **Google Test**, and run natively. The referenc
 implementation `external/sss` (dsprenkels/sss) cross-validates the SSS output.
 
 Test executables (each registered with `ctest`):
-`sss_test`, `base32_test`, `bip39_test`, `share_base32_test`, `qrcode_test`,
-`svg_test`, `qr_decode_test`.
+`sss_test`, `base32_test`, `bip39_test`, `slip39_test`, `share_base32_test`,
+`qrcode_test`, `svg_test`, `qr_decode_test`.
 
 ```bash
 ctest --test-dir build/tests                # summary

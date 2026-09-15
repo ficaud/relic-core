@@ -143,14 +143,14 @@
         Module._free(sharesPtr);
         Module._free(secretPtr);
 
-        if (mode === 1) {
-            var decompressed = bip39DecompressWasm(secret);
+        if (mode.codec === 'bip39') {
+            var decompressed = mode.passphrase ? bip39DecompressPassphraseWasm(secret) : bip39DecompressWasm(secret);
             if (decompressed === null) { showToast('BIP-39 decompression failed'); return; }
             secret = decompressed;
-        } else if (mode === 2) {
-            var decompressedPass = bip39DecompressPassphraseWasm(secret);
-            if (decompressedPass === null) { showToast('BIP-39 decompression failed'); return; }
-            secret = decompressedPass;
+        } else if (mode.codec === 'slip39') {
+            var decompressedSlip = mode.passphrase ? slip39DecompressPassphraseWasm(secret) : slip39DecompressWasm(secret);
+            if (decompressedSlip === null) { showToast('SLIP-39 decompression failed'); return; }
+            secret = decompressedSlip;
         }
 
         resultText.textContent = secret || '(empty)';
@@ -159,9 +159,10 @@
     }
 
     /* ── Fetch implementation (device) ── */
-    function reconstructFetch(d, x, bip) {
+    function reconstructFetch(d, x, mode) {
         var url = '/reconstruct?d=' + d.join(',') + '&x=' + x.join(',');
-        if (bip) url += '&bip=' + bip;
+        if (mode.codec === 'bip39') url += '&bip=' + (mode.passphrase ? 2 : 1);
+        else if (mode.codec === 'slip39') url += '&slip=' + (mode.passphrase ? 2 : 1);
         fetch(url)
             .then(function (r) {
                 if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -203,17 +204,39 @@
         return text;
     }
 
+    function slip39DecompressWasm(secretBytes) {
+        if (!codecModule || !codecModule._wasm_slip39_decompress) return null;
+        var hex = bytesToHex(secretBytes);
+        var ptr = codecModule.ccall('wasm_slip39_decompress', 'number', ['string'], [hex]);
+        if (!ptr) return null;
+        var text = codecModule.UTF8ToString(ptr);
+        codecModule._free(ptr);
+        return text;
+    }
+
+    function slip39DecompressPassphraseWasm(secretBytes) {
+        if (!codecModule || !codecModule._wasm_slip39_decompress_passphrase) return null;
+        var hex = bytesToHex(secretBytes);
+        var ptr = codecModule.ccall('wasm_slip39_decompress_passphrase', 'number', ['string'], [hex]);
+        if (!ptr) return null;
+        var text = codecModule.UTF8ToString(ptr);
+        codecModule._free(ptr);
+        return text;
+    }
+
     /* ── Entry point ── */
-    function bipMode() {
-        var compression = document.getElementById('bip-compression').checked;
-        var passphrase = document.getElementById('bip-passphrase').checked;
-        if (!compression) return 0;
-        return passphrase ? 2 : 1;
+    function compressionMode() {
+        var bip = document.getElementById('bip-compression').checked;
+        var slip = document.getElementById('slip-compression').checked;
+        var passphrase = document.getElementById('compression-passphrase').checked;
+        if (bip) return { codec: 'bip39', passphrase: passphrase };
+        if (slip) return { codec: 'slip39', passphrase: passphrase };
+        return { codec: 'none', passphrase: false };
     }
 
     function reconstruct() {
         var parsed = parseShares();
-        var mode = bipMode();
+        var mode = compressionMode();
 
         if (parsed.d.length < 2) { showToast('Enter at least 2 shares'); return; }
 
@@ -225,10 +248,21 @@
     }
 
     var bipCompressionCheckbox = document.getElementById('bip-compression');
-    var bipPassphraseCheckbox = document.getElementById('bip-passphrase');
+    var slipCompressionCheckbox = document.getElementById('slip-compression');
+    var passphraseCheckbox = document.getElementById('compression-passphrase');
     bipCompressionCheckbox.addEventListener('change', function () {
-        bipPassphraseCheckbox.disabled = !bipCompressionCheckbox.checked;
-        if (!bipCompressionCheckbox.checked) bipPassphraseCheckbox.checked = false;
+        if (bipCompressionCheckbox.checked) {
+            slipCompressionCheckbox.checked = false;
+        }
+        passphraseCheckbox.disabled = !(bipCompressionCheckbox.checked || slipCompressionCheckbox.checked);
+        if (passphraseCheckbox.disabled) passphraseCheckbox.checked = false;
+    });
+    slipCompressionCheckbox.addEventListener('change', function () {
+        if (slipCompressionCheckbox.checked) {
+            bipCompressionCheckbox.checked = false;
+        }
+        passphraseCheckbox.disabled = !(bipCompressionCheckbox.checked || slipCompressionCheckbox.checked);
+        if (passphraseCheckbox.disabled) passphraseCheckbox.checked = false;
     });
 
     unsplitBtn.addEventListener('click', reconstruct);
