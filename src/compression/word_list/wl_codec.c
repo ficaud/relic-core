@@ -1,71 +1,122 @@
 /**
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * @file bip39.c
+ * @file wl_codec.c
  *
- * @brief
+ * @brief Word list codec handling both the BIP-39 and SLIP-39 word lists.
  *
  * @author Julien F.
- * @date 2026-08-25
+ * @date 2026-09-15
  *
- * @details Use the BIP-39 words list to replace a seed phrase with its word's index.
- *
- *          For example, word "abandon" is at index "0001", word "zoo" at index "2048".
- *          This means the result of a seed phrase compression is an hex that represents all the seed phrase
- *          words.
- *
- *          For example, the seed phrase "abandon zoo zoo" is compressed to "0x000108000800" turning 16 bytes into 6
- *          hex words.
+ * @details This file contains the generic word-list parsing and compression /
+ *          decompression functions. The "wl" stands for "word list": these functions
+ *          are used along with word lists to convert a word into its index. At the
+ *          moment, BIP-39 and SLIP-39 word lists are supported.
  */
 
-#include "bip39.h"
+#include "wl_codec.h"
 
 #include "bip39_words.h"
+#include "slip39_words.h"
 
 #include <errno.h>
 #include <stdint.h>
 #include <string.h>
+
 // ===========================================================================
 // Structure and variables definition
 // ===========================================================================
+static const wl_codec_t wl_codec_list[WORD_LIST_COUNT] = {
+    [WORD_LIST_BIP39] =
+        {
+            .wl_config =
+                {
+                    .list_word_count = BIP39_WORD_COUNT,
+                    .list_words = bip39_words,
+                },
+            .sp_config =
+                {
+                    .max_word_count = WL_BIP39_MAX_WORDS,
+                    .max_word_len = WL_MAX_WORD_LEN,
+                    .passphrase_separator = WL_PASSPHRASE_SEPARATOR,
+                },
+        },
+    [WORD_LIST_SLIP39] =
+        {
+            .wl_config =
+                {
+                    .list_word_count = SLIP39_WORD_COUNT,
+                    .list_words = slip39_words,
+                },
+            .sp_config =
+                {
+                    .max_word_count = WL_SLIP39_MAX_WORDS,
+                    .max_word_len = WL_MAX_WORD_LEN,
+                    .passphrase_separator = WL_PASSPHRASE_SEPARATOR,
+                },
+        },
+    // Add more here is needed
+};
+
 // ===========================================================================
 // Static function declarations
 // ===========================================================================
 /**
- * @brief Parse a seed phrase substring into its BIP-39 word indices.
+ * @brief Return the codec configuration for a word list, or NULL if invalid.
+ *
+ * @param[in] list  Word list selector.
+ *
+ * @return Pointer to the configuration, or NULL if @p list is out of range.
+ */
+static const wl_codec_t *wl_codec_cfg(word_list_e list);
+
+/**
+ * @brief Parse a phrase substring into its word indices.
  *
  * Splits @p in on spaces (skipping empty tokens), looks each token up in the
- * BIP-39 wordlist and fills @p indices with the corresponding word indices.
+ * word list and fills @p indices with the corresponding word indices.
  *
- * @param[in]  in         Seed phrase bytes.
+ * @param[in]  cfg        Word list codec configuration.
+ * @param[in]  in         Phrase bytes.
  * @param[in]  in_len     Number of input bytes.
- * @param[out] indices    Output array of word indices (≥ SEEDPHRASE_MAX_WORDS_COUNT entries).
+ * @param[out] indices    Output array of word indices.
  * @param[out] word_count Receives the number of parsed words.
  *
- * @return 0 on success, -EINVAL if a token is not in the wordlist, exceeds the
+ * @return 0 on success, -EINVAL if a token is not in the word list, exceeds the
  *         maximum word length or exceeds the maximum word count.
  */
-static int bip39_parse_words(const char *in, size_t in_len, uint16_t *indices, uint16_t *word_count);
+static int wl_codec_parse_words(const wl_codec_t *cfg,
+                                const char *in,
+                                size_t in_len,
+                                uint16_t *indices,
+                                uint16_t *word_count);
 
 /// ===========================================================================
 // Public function definition
 // ===========================================================================
-int bip39_compress(const char *in, size_t in_len, uint8_t *out, size_t out_size, size_t *out_len)
+int wl_codec_compress(word_list_e list, const char *in, size_t in_len, uint8_t *out, size_t out_size, size_t *out_len)
 {
     int ret = -EINVAL;
-    uint16_t indices[SEEDPHRASE_MAX_WORDS_COUNT]; // output buffer that contains at most 24 words
+    uint16_t indices[WL_MAX_WORD_COUNT]; // output buffer that contains at most 33 words
     uint16_t word_count = 0;
+    const wl_codec_t *cfg = wl_codec_cfg(list);
 
-    // Check that in respect the BIP-39 rules
-    // Check that out_size and in_len respect the BIP-39 rules (for a 24 words seed phrase maximum)
-    if (in == NULL || in_len == 0 || out == NULL || out_len == NULL ||
-        in_len > (SEEDPHRASE_MAX_WORDS_COUNT * SEEDPHRASE_MAX_WORD_LEN + SEEDPHRASE_MAX_WORDS_COUNT) ||
-        out_size < (SEEDPHRASE_MAX_WORDS_COUNT * 2))
+    if (cfg == NULL)
     {
         goto exit;
     }
 
-    if (bip39_parse_words(in, in_len, indices, &word_count) != 0)
+    // Check that in respect the word list rules
+    // Check that out_size and in_len respect the word list rules (for the maximum word count)
+    if (in == NULL || in_len == 0 || out == NULL || out_len == NULL ||
+        in_len >
+            ((size_t)cfg->sp_config.max_word_count * cfg->sp_config.max_word_len + cfg->sp_config.max_word_count) ||
+        out_size < ((size_t)cfg->sp_config.max_word_count * 2))
+    {
+        goto exit;
+    }
+
+    if (wl_codec_parse_words(cfg, in, in_len, indices, &word_count) != 0)
     {
         goto exit;
     }
@@ -87,19 +138,30 @@ exit:
     return ret;
 }
 
-int bip39_compress_passphrase(const char *in, size_t in_len, uint8_t *out, size_t out_size, size_t *out_len)
+int wl_codec_compress_passphrase(word_list_e list,
+                                 const char *in,
+                                 size_t in_len,
+                                 uint8_t *out,
+                                 size_t out_size,
+                                 size_t *out_len)
 {
     int ret = -EINVAL;
-    uint16_t indices[SEEDPHRASE_MAX_WORDS_COUNT];
+    uint16_t indices[WL_MAX_WORD_COUNT];
     uint16_t word_count = 0;
+    const wl_codec_t *cfg = wl_codec_cfg(list);
+
+    if (cfg == NULL)
+    {
+        goto exit;
+    }
 
     if (in == NULL || in_len == 0 || out == NULL || out_len == NULL)
     {
         goto exit;
     }
 
-    // Find the first separator: seed phrase before, passphrase after.
-    const char *sep = memchr(in, BIP39_PASSPHRASE_SEPARATOR, in_len);
+    // Find the first separator: phrase before, passphrase after.
+    const char *sep = memchr(in, cfg->sp_config.passphrase_separator, in_len);
     if (sep == NULL)
     {
         goto exit; // no separator
@@ -111,7 +173,7 @@ int bip39_compress_passphrase(const char *in, size_t in_len, uint8_t *out, size_
     const char *pp_end = in + in_len; // exclusive
 
     // Trim surrounding whitespace (formatting) on both parts.
-    // Remove the space and tabulation before and after the seed phrase.
+    // Remove the space and tabulation before and after the phrase.
     while (seed_start < seed_end && (*(seed_start) == ' ' || *(seed_start) == '\t'))
     {
         seed_start++;
@@ -134,7 +196,7 @@ int bip39_compress_passphrase(const char *in, size_t in_len, uint8_t *out, size_
     size_t seed_len = (size_t)(seed_end - seed_start);
     size_t pp_len = (size_t)(pp_end - pp_start);
 
-    if (bip39_parse_words(seed_start, seed_len, indices, &word_count) != 0 || word_count == 0)
+    if (wl_codec_parse_words(cfg, seed_start, seed_len, indices, &word_count) != 0 || word_count == 0)
     {
         goto exit;
     }
@@ -164,35 +226,41 @@ exit:
     return ret;
 }
 
-int bip39_decompress(const uint8_t *in, size_t in_len, char *out, size_t out_size, size_t *out_len)
+int wl_codec_decompress(word_list_e list, const uint8_t *in, size_t in_len, char *out, size_t out_size, size_t *out_len)
 {
     int ret = -EINVAL;
+    const wl_codec_t *cfg = wl_codec_cfg(list);
 
-    // Check that in respect the BIP-39 rules
+    if (cfg == NULL)
+    {
+        goto exit;
+    }
+
+    // Check that in respect the word list rules
     if (in == NULL || in_len == 0 || out == NULL || out_len == NULL)
     {
         goto exit;
     }
 
     // Input is a sequence of 2-byte little-endian word indices
-    if ((in_len % 2) != 0 || in_len > (SEEDPHRASE_MAX_WORDS_COUNT * 2))
+    if ((in_len % 2) != 0 || in_len > ((size_t)cfg->sp_config.max_word_count * 2))
     {
         goto exit;
     }
 
     uint16_t word_count = (uint16_t)(in_len / 2);
 
-    // Iterate on each compressed word index and uncompress them into a seed phrase
+    // Iterate on each compressed word index and uncompress them into a phrase
     size_t pos = 0;
     for (uint16_t i = 0; i < word_count; i++)
     {
         uint16_t index = (uint16_t)(in[i * 2] | (in[i * 2 + 1] << 8));
-        if (index >= BIP39_WORD_COUNT)
+        if (index >= cfg->wl_config.list_word_count)
         {
             goto exit;
         }
 
-        const char *word = bip39_words[index];
+        const char *word = cfg->wl_config.list_words[index];
         size_t word_len = strlen(word);
         size_t needed = word_len + (i > 0 ? 1 : 0);
 
@@ -219,9 +287,20 @@ exit:
     return ret;
 }
 
-int bip39_decompress_passphrase(const uint8_t *in, size_t in_len, char *out, size_t out_size, size_t *out_len)
+int wl_codec_decompress_passphrase(word_list_e list,
+                                   const uint8_t *in,
+                                   size_t in_len,
+                                   char *out,
+                                   size_t out_size,
+                                   size_t *out_len)
 {
     int ret = -EINVAL;
+    const wl_codec_t *cfg = wl_codec_cfg(list);
+
+    if (cfg == NULL)
+    {
+        goto exit;
+    }
 
     if (in == NULL || in_len < 1 || out == NULL || out_len == NULL)
     {
@@ -230,7 +309,7 @@ int bip39_decompress_passphrase(const uint8_t *in, size_t in_len, char *out, siz
 
     // Format: [word_count: 1 byte][word_count x 2 bytes][passphrase bytes]
     uint16_t word_count = in[0];
-    if (word_count == 0 || word_count > SEEDPHRASE_MAX_WORDS_COUNT)
+    if (word_count == 0 || word_count > cfg->sp_config.max_word_count)
     {
         goto exit;
     }
@@ -244,17 +323,17 @@ int bip39_decompress_passphrase(const uint8_t *in, size_t in_len, char *out, siz
     const uint8_t *pp_start = in + 1 + index_bytes;
     size_t pp_len = in_len - 1 - index_bytes;
 
-    // Reconstruct the seed phrase words (space-separated).
+    // Reconstruct the phrase words (space-separated).
     size_t pos = 0;
     for (uint16_t i = 0; i < word_count; i++)
     {
         uint16_t index = (uint16_t)(in[1 + i * 2] | (in[1 + i * 2 + 1] << 8));
-        if (index >= BIP39_WORD_COUNT)
+        if (index >= cfg->wl_config.list_word_count)
         {
             goto exit;
         }
 
-        const char *word = bip39_words[index];
+        const char *word = cfg->wl_config.list_words[index];
         size_t word_len = strlen(word);
         size_t needed = word_len + (i > 0 ? 1 : 0);
 
@@ -281,7 +360,7 @@ int bip39_decompress_passphrase(const uint8_t *in, size_t in_len, char *out, siz
             goto exit;
         }
         out[pos++] = ' ';
-        out[pos++] = BIP39_PASSPHRASE_SEPARATOR;
+        out[pos++] = cfg->sp_config.passphrase_separator;
         out[pos++] = ' ';
         memcpy(&out[pos], pp_start, pp_len);
         pos += pp_len;
@@ -295,25 +374,39 @@ int bip39_decompress_passphrase(const uint8_t *in, size_t in_len, char *out, siz
 exit:
     return ret;
 }
+
 // ===========================================================================
 // Static function definition
 // ===========================================================================
+static const wl_codec_t *wl_codec_cfg(word_list_e list)
+{
+    if (list >= WORD_LIST_COUNT)
+    {
+        return NULL;
+    }
 
-static int bip39_parse_words(const char *in, size_t in_len, uint16_t *indices, uint16_t *word_count)
+    return &wl_codec_list[list];
+}
+
+static int wl_codec_parse_words(const wl_codec_t *cfg,
+                                const char *in,
+                                size_t in_len,
+                                uint16_t *indices,
+                                uint16_t *word_count)
 {
     uint16_t count = 0;
     size_t i = 0;
 
     while (i < in_len)
     {
-        char word[SEEDPHRASE_MAX_WORD_LEN + 1];
+        char word[WL_MAX_WORD_LEN + 1];
         uint8_t wlen = 0;
 
         while (i < in_len && in[i] != ' ')
         {
-            if (wlen >= SEEDPHRASE_MAX_WORD_LEN)
+            if (wlen >= cfg->sp_config.max_word_len)
             {
-                return -EINVAL; // word longer than the BIP-39 maximum
+                return -EINVAL; // word longer than the maximum
             }
             word[wlen++] = in[i++];
         }
@@ -326,13 +419,13 @@ static int bip39_parse_words(const char *in, size_t in_len, uint16_t *indices, u
         }
 
         int found = 0;
-        for (uint16_t j = 0; j < BIP39_WORD_COUNT; j++)
+        for (uint16_t j = 0; j < cfg->wl_config.list_word_count; j++)
         {
-            if (strcmp(word, bip39_words[j]) == 0)
+            if (strcmp(word, cfg->wl_config.list_words[j]) == 0)
             {
-                if (count >= SEEDPHRASE_MAX_WORDS_COUNT)
+                if (count >= cfg->sp_config.max_word_count)
                 {
-                    return -EINVAL; // more words than the BIP-39 maximum
+                    return -EINVAL; // more words than the maximum
                 }
                 indices[count++] = j;
                 found = 1;
@@ -342,7 +435,7 @@ static int bip39_parse_words(const char *in, size_t in_len, uint16_t *indices, u
 
         if (!found)
         {
-            return -EINVAL; // word not in the BIP-39 wordlist
+            return -EINVAL; // word not in the word list
         }
 
         if (i < in_len)

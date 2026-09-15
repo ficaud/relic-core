@@ -20,11 +20,15 @@
             <label for="bip-compression">BIP-39 Compression (<span class="tooltip" data-tooltip="if your secret is a seed phrase (BIP-39)">?</span>)</label>
         </div>
         <div class="checkbox-row">
-            <input type="checkbox" id="bip-passphrase" class="bip-compression" disabled>
-            <label for="bip-passphrase">With passphrase (<span class="tooltip" data-tooltip="if you have a passphrase after your seed phrase (e.g. 'abandon zoo zoo; my_passphrase')">?</span>)</label>
+            <input type="checkbox" id="slip-compression" class="bip-compression">
+            <label for="slip-compression">SLIP-39 Compression (<span class="tooltip" data-tooltip="if your secret is a mnemonic (SLIP-39)">?</span>)</label>
+        </div>
+        <div class="checkbox-row">
+            <input type="checkbox" id="compression-passphrase" class="bip-compression" disabled>
+            <label for="compression-passphrase">With passphrase (<span class="tooltip" data-tooltip="if you have a passphrase after your seed phrase or mnemonic (e.g. 'abandon zoo zoo; my_passphrase')">?</span>)</label>
         </div>
         <div class="test-box">
-            <input type="text" id="msg-input" class="msg-input" placeholder="Enter your secret..." maxlength="256">
+            <input type="text" id="msg-input" class="msg-input" placeholder="Enter your secret..." maxlength="512">
             <button id="msg-btn" class="msg-btn">Encrypt</button>
         </div>
         <div id="share-list" class="hidden"></div>

@@ -25,11 +25,11 @@
 #if defined(CONFIG_RELIC_QR_DECODE_SERVER)
 #include "qr_decode.h"
 #endif
-#include "bip39.h"
 #include "qr_encode.h"
 #include "qrcode_to_svg.h"
 #include "share_base32.h"
 #include "sss.h"
+#include "wl_codec.h"
 
 #include <ctype.h>
 #include <stdio.h>
@@ -248,7 +248,7 @@ const char *handler_divide(const struct http_request *req)
         size_t msg_len = msg_end - msg_start;
         if (msg_len > 0)
         {
-            char msg_buf[SSS_MAX_SECRET_LEN + 1];
+            char msg_buf[SSS_MAX_SECRET_LEN * 2 + 1];
             size_t copy_len = msg_len;
             if (copy_len >= sizeof(msg_buf))
             {
@@ -278,11 +278,13 @@ const char *handler_divide(const struct http_request *req)
 
                 if (strcmp(bip_buf, BIP_MODE_CLASSIC) == 0)
                 {
-                    rc = bip39_compress(msg_buf, secret_len, compressed, sizeof(compressed), &out_len);
+                    rc = wl_codec_compress(
+                        WORD_LIST_BIP39, msg_buf, secret_len, compressed, sizeof(compressed), &out_len);
                 }
                 else if (strcmp(bip_buf, BIP_MODE_PASSPHRASE) == 0)
                 {
-                    rc = bip39_compress_passphrase(msg_buf, secret_len, compressed, sizeof(compressed), &out_len);
+                    rc = wl_codec_compress_passphrase(
+                        WORD_LIST_BIP39, msg_buf, secret_len, compressed, sizeof(compressed), &out_len);
                 }
                 else
                 {
@@ -297,6 +299,35 @@ const char *handler_divide(const struct http_request *req)
                 secret = compressed;
                 secret_len = out_len;
                 LOG_INF("BIP-39 compressed to %zu bytes", secret_len);
+            }
+            else if (get_query_param(query, "slip", bip_buf, sizeof(bip_buf)) == 0)
+            {
+                size_t out_len = 0;
+                int rc;
+
+                if (strcmp(bip_buf, SLIP_MODE_CLASSIC) == 0)
+                {
+                    rc = wl_codec_compress(
+                        WORD_LIST_SLIP39, msg_buf, secret_len, compressed, sizeof(compressed), &out_len);
+                }
+                else if (strcmp(bip_buf, SLIP_MODE_PASSPHRASE) == 0)
+                {
+                    rc = wl_codec_compress_passphrase(
+                        WORD_LIST_SLIP39, msg_buf, secret_len, compressed, sizeof(compressed), &out_len);
+                }
+                else
+                {
+                    rc = -EINVAL;
+                }
+
+                if (rc != 0)
+                {
+                    LOG_ERR("SLIP-39 compression failed");
+                    goto exit;
+                }
+                secret = compressed;
+                secret_len = out_len;
+                LOG_INF("SLIP-39 compressed to %zu bytes", secret_len);
             }
 
             static struct sss_share shares[SSS_N];
@@ -388,11 +419,13 @@ const char *handler_reconstruct(const struct http_request *req)
 
         if (strcmp(bip_buf, BIP_MODE_CLASSIC) == 0)
         {
-            rc = bip39_decompress(secret, shares[0].len, decompressed, sizeof(decompressed), &out_len);
+            rc = wl_codec_decompress(
+                WORD_LIST_BIP39, secret, shares[0].len, decompressed, sizeof(decompressed), &out_len);
         }
         else if (strcmp(bip_buf, BIP_MODE_PASSPHRASE) == 0)
         {
-            rc = bip39_decompress_passphrase(secret, shares[0].len, decompressed, sizeof(decompressed), &out_len);
+            rc = wl_codec_decompress_passphrase(
+                WORD_LIST_BIP39, secret, shares[0].len, decompressed, sizeof(decompressed), &out_len);
         }
         else
         {
@@ -407,6 +440,36 @@ const char *handler_reconstruct(const struct http_request *req)
         }
         secret_text = decompressed;
         LOG_INF("BIP-39 decompressed to %zu bytes", out_len);
+    }
+    else if (get_query_param(query, "slip", bip_buf, sizeof(bip_buf)) == 0)
+    {
+        static char decompressed[SSS_MAX_SECRET_LEN * 2];
+        size_t out_len = 0;
+        int rc;
+
+        if (strcmp(bip_buf, SLIP_MODE_CLASSIC) == 0)
+        {
+            rc = wl_codec_decompress(
+                WORD_LIST_SLIP39, secret, shares[0].len, decompressed, sizeof(decompressed), &out_len);
+        }
+        else if (strcmp(bip_buf, SLIP_MODE_PASSPHRASE) == 0)
+        {
+            rc = wl_codec_decompress_passphrase(
+                WORD_LIST_SLIP39, secret, shares[0].len, decompressed, sizeof(decompressed), &out_len);
+        }
+        else
+        {
+            rc = -EINVAL;
+        }
+
+        if (rc != 0)
+        {
+            LOG_ERR("SLIP-39 decompression failed");
+            ret = http_responses_list[HTTP_RESPONSE_INTERNAL_SERVER_ERROR];
+            goto exit;
+        }
+        secret_text = decompressed;
+        LOG_INF("SLIP-39 decompressed to %zu bytes", out_len);
     }
 
     ret = handler_combine_json_response(secret_text);

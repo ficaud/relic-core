@@ -85,21 +85,22 @@ target_link_libraries(base32_test PRIVATE
 )
 
 # ---------------------------------------------------------------------------
-# bip39_test — BIP-39 seed phrase compression codec tests (standalone)
-# Build with: cmake --build tests/build-native --target bip39_test
+# wl_codec_test — generic word-list codec tests (BIP-39 + SLIP-39, standalone)
+# Build with: cmake --build tests/build-native --target wl_codec_test
 # ---------------------------------------------------------------------------
-add_executable(bip39_test
+add_executable(wl_codec_test
     main.cpp
-    test_bip39.cpp
-    ${COMPRESSION_SRC_DIR}/bip39.c                   # BIP-39 compression codec
-    ${COMPRESSION_SRC_DIR}/bip39_words.c             # BIP-39 English wordlist
+    test_wl_codec.cpp
+    ${COMPRESSION_SRC_DIR}/word_list/wl_codec.c           # generic word-list codec
+    ${COMPRESSION_SRC_DIR}/word_list/bip39_words.c        # BIP-39 English wordlist
+    ${COMPRESSION_SRC_DIR}/word_list/slip39_words.c       # SLIP-39 English wordlist
 )
 
-target_include_directories(bip39_test PRIVATE
-    ${COMPRESSION_SRC_DIR}                       # for bip39.h / bip39_words.h
+target_include_directories(wl_codec_test PRIVATE
+    ${COMPRESSION_SRC_DIR}/word_list                  # for wl_codec.h / *_words.h
 )
 
-target_link_libraries(bip39_test PRIVATE
+target_link_libraries(wl_codec_test PRIVATE
     GTest::GTest
     GTest::Main
 )
@@ -207,8 +208,8 @@ add_test(NAME base32_test COMMAND base32_test)
 # Launch the share base32 codec unit tests (ShareBase32Test suite).
 add_test(NAME share_base32_test COMMAND share_base32_test)
 
-# Launch the BIP-39 compression codec unit tests (Bip39Test suite).
-add_test(NAME bip39_test COMMAND bip39_test)
+# Launch the word-list codec unit tests (WlCodecTest suite).
+add_test(NAME wl_codec_test COMMAND wl_codec_test)
 
 # Launch the QR code unit tests (QRCodeTest suite) via the dedicated binary.
 add_test(NAME qrcode_test COMMAND qrcode_test)
@@ -233,13 +234,14 @@ if(ENABLE_COVERAGE)
     get_filename_component(COVERAGE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
 
     add_custom_target(coverage
-        DEPENDS sss_test base32_test bip39_test share_base32_test qrcode_test svg_test qr_decode_test
+        DEPENDS sss_test base32_test wl_codec_test share_base32_test qrcode_test svg_test qr_decode_test
         COMMAND ${CMAKE_CTEST_COMMAND} --test-dir ${CMAKE_BINARY_DIR} --output-on-failure --verbose
         COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/coverage
         COMMAND ${GCOVR_EXECUTABLE} -r ${COVERAGE_ROOT}
             --object-directory ${CMAKE_BINARY_DIR}
             --filter src/.*
             --exclude .*bip39_words.*
+            --exclude .*slip39_words.*
             --html-details ${CMAKE_BINARY_DIR}/coverage/index.html
             --xml ${CMAKE_BINARY_DIR}/coverage/coverage.xml
             --print-summary

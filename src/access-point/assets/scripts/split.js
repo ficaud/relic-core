@@ -237,9 +237,10 @@
     }
 
     /* ── Fetch implementation (device) ── */
-    function encryptFetch(msg, bip) {
+    function encryptFetch(msg, mode) {
         var url = '/divide?msg=' + encodeURIComponent(msg);
-        if (bip) url += '&bip=' + bip;
+        if (mode.codec === 'bip39') url += '&bip=' + (mode.passphrase ? 2 : 1);
+        else if (mode.codec === 'slip39') url += '&slip=' + (mode.passphrase ? 2 : 1);
         fetch(url)
             .then(function (r) {
                 if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -284,29 +285,49 @@
         return hex;
     }
 
+    function slip39CompressWasm(msg) {
+        if (!codecModule || !codecModule._wasm_slip39_compress) return null;
+        var ptr = codecModule.ccall('wasm_slip39_compress', 'number', ['string'], [msg]);
+        if (!ptr) return null;
+        var hex = codecModule.UTF8ToString(ptr);
+        codecModule._free(ptr);
+        return hex;
+    }
+
+    function slip39CompressPassphraseWasm(msg) {
+        if (!codecModule || !codecModule._wasm_slip39_compress_passphrase) return null;
+        var ptr = codecModule.ccall('wasm_slip39_compress_passphrase', 'number', ['string'], [msg]);
+        if (!ptr) return null;
+        var hex = codecModule.UTF8ToString(ptr);
+        codecModule._free(ptr);
+        return hex;
+    }
+
     /* ── Entry point ── */
-    function bipMode() {
-        var compression = document.getElementById('bip-compression').checked;
-        var passphrase = document.getElementById('bip-passphrase').checked;
-        if (!compression) return 0;
-        return passphrase ? 2 : 1;
+    function compressionMode() {
+        var bip = document.getElementById('bip-compression').checked;
+        var slip = document.getElementById('slip-compression').checked;
+        var passphrase = document.getElementById('compression-passphrase').checked;
+        if (bip) return { codec: 'bip39', passphrase: passphrase };
+        if (slip) return { codec: 'slip39', passphrase: passphrase };
+        return { codec: 'none', passphrase: false };
     }
 
     function encrypt() {
         var msg = msgInput.value;
         if (msg.trim() === '') return;
-        var mode = bipMode();
+        var mode = compressionMode();
 
         if (useWasm && Module && Module._sss_split_wasm) {
             var bytes;
-            if (mode === 1) {
-                var hex = bip39CompressWasm(msg);
+            if (mode.codec === 'bip39') {
+                var hex = mode.passphrase ? bip39CompressPassphraseWasm(msg) : bip39CompressWasm(msg);
                 if (!hex) { showToast('BIP-39 compression failed'); return; }
                 bytes = hexToBytes(hex);
-            } else if (mode === 2) {
-                var hexPass = bip39CompressPassphraseWasm(msg);
-                if (!hexPass) { showToast('BIP-39 compression failed'); return; }
-                bytes = hexToBytes(hexPass);
+            } else if (mode.codec === 'slip39') {
+                var hexSlip = mode.passphrase ? slip39CompressPassphraseWasm(msg) : slip39CompressWasm(msg);
+                if (!hexSlip) { showToast('SLIP-39 compression failed'); return; }
+                bytes = hexToBytes(hexSlip);
             } else {
                 bytes = stringToBytes(msg);
             }
@@ -317,10 +338,21 @@
     }
 
     var bipCompressionCheckbox = document.getElementById('bip-compression');
-    var bipPassphraseCheckbox = document.getElementById('bip-passphrase');
+    var slipCompressionCheckbox = document.getElementById('slip-compression');
+    var passphraseCheckbox = document.getElementById('compression-passphrase');
     bipCompressionCheckbox.addEventListener('change', function () {
-        bipPassphraseCheckbox.disabled = !bipCompressionCheckbox.checked;
-        if (!bipCompressionCheckbox.checked) bipPassphraseCheckbox.checked = false;
+        if (bipCompressionCheckbox.checked) {
+            slipCompressionCheckbox.checked = false;
+        }
+        passphraseCheckbox.disabled = !(bipCompressionCheckbox.checked || slipCompressionCheckbox.checked);
+        if (passphraseCheckbox.disabled) passphraseCheckbox.checked = false;
+    });
+    slipCompressionCheckbox.addEventListener('change', function () {
+        if (slipCompressionCheckbox.checked) {
+            bipCompressionCheckbox.checked = false;
+        }
+        passphraseCheckbox.disabled = !(bipCompressionCheckbox.checked || slipCompressionCheckbox.checked);
+        if (passphraseCheckbox.disabled) passphraseCheckbox.checked = false;
     });
 
     msgBtn.addEventListener('click', encrypt);
