@@ -72,11 +72,11 @@ target_link_libraries(sss_test PRIVATE
 add_executable(base32_test
     main.cpp
     test_base32.cpp
-    ${COMPRESSION_SRC_DIR}/base32.c           # Base32 codec
+    ${COMPRESSION_SRC_DIR}/encoding/base32.c           # Base32 codec
 )
 
 target_include_directories(base32_test PRIVATE
-    ${COMPRESSION_SRC_DIR}                       # for base32.h
+    ${COMPRESSION_SRC_DIR}/encoding               # for base32.h
 )
 
 target_link_libraries(base32_test PRIVATE
@@ -111,12 +111,12 @@ target_link_libraries(bip39_test PRIVATE
 add_executable(share_base32_test
     main.cpp
     test_share_base32.cpp
-    ${COMPRESSION_SRC_DIR}/share_base32.c           # Share text codec
-    ${COMPRESSION_SRC_DIR}/base32.c                 # Base32 codec
+    ${COMPRESSION_SRC_DIR}/encoding/share_base32.c           # Share text codec
+    ${COMPRESSION_SRC_DIR}/encoding/base32.c                 # Base32 codec
 )
 
 target_include_directories(share_base32_test PRIVATE
-    ${COMPRESSION_SRC_DIR}                       # for share_base32.h
+    ${COMPRESSION_SRC_DIR}/encoding               # for share_base32.h
     ${SSS_SRC_DIR}                               # for sss.h (SSS_MAX_SECRET_LEN)
 )
 
