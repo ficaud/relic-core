@@ -39,10 +39,10 @@ else()
       src/access-point/net/src/dhcp.c
       src/access-point/wifi/src/wifi_mgr.c
       src/sss/sss.c
-      src/compression/base32.c
-      src/compression/share_base32.c
       src/compression/bip39.c
       src/compression/bip39_words.c
+      src/compression/encoding/base32.c
+      src/compression/encoding/share_base32.c
       src/qrcode/qr_encode.c
       src/svg/qrcode_to_svg.c
   )
@@ -121,6 +121,7 @@ else()
       src/access-point/assets
       src/sss
       src/compression
+      src/compression/encoding
       src/qrcode
       src/svg
   )
