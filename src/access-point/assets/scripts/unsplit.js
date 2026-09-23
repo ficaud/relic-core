@@ -34,7 +34,7 @@
         document.head.appendChild(script);
     })();
 
-    /* ── QR decode WASM bootstrap (quirc) ──
+    /* ── QR decode WASM bootstrap (ZXing-cpp) ──
        Only present in the WASM demo. On the embedded device qr_decode.js does
        not exist, so script.onerror fires and decoding is done on-device via
        POST /qr_decode. In the demo the WASM module is the local fallback. ── */
@@ -46,7 +46,7 @@
         script.onload = function () {
             QRDecodeWasm().then(function (m) {
                 qrDecodeModule = m;
-                console.log('[relic-core] QR decoder: quirc (WASM) available as fallback');
+                console.log('[relic-core] QR decoder: ZXing (WASM) available as fallback');
             });
         };
         script.onerror = function () {

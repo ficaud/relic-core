@@ -44,7 +44,7 @@ The firmware is built on the following C libraries:
 | Library | Version | Used for | Source |
 |---|---|---|---|
 | [Zephyr RTOS](https://github.com/zephyrproject-rtos/zephyr) | v4.4.2 | RTOS kernel, networking, Wi-Fi, logging, RNG. Its modules (`hal_espressif`, `mbedtls`, `tf-psa-crypto`, `zcbor`, `picolibc`, `mcuboot`) are fetched via `west update` — see `west.yml`. | `west.yml` |
-| [quirc](https://github.com/ficaud/relic-quirc) (relic-quirc fork) | v1.2 | On-device QR decoding (`src/qrcode/qr_decode.c`, ESP32-S3 only via `CONFIG_RELIC_QR_DECODE_SERVER`) | git submodule `external/quirc` |
+| [quirc](https://github.com/ficaud/relic-quirc) (relic-quirc fork) | v1.2 | On-device QR decoding (`src/qrcode/quirc/qr_decode_quirc.c`, ESP32-S3 only via `CONFIG_RELIC_QR_DECODE_SERVER`) | git submodule `external/quirc` |
 | [Nayuki QR-Code-generator](https://github.com/nayuki/QR-Code-generator) | — | QR generation (`src/qrcode/qr_encode.c`, reduced build: alphanumeric / ECC LOW only, MIT) | vendored in `src/qrcode/qr_encode.c` |
 
 Zephyr module versions are pinned by the Zephyr v4.4.2 manifest and resolved with `west update`. `external/sss` (dsprenkels/sss) is not a firmware dependency — it is used only to cross-validate the unit tests.

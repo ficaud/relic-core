@@ -24,11 +24,11 @@ bootloader/
 tools/
 
 # Third-party submodules — excluded by default, but the demo Makefile needs
-# quirc to build the qr_decode WASM module. Because Docker cannot re-include
+# zxing-cpp to build the qr_decode WASM module. Because Docker cannot re-include
 # a path whose parent is excluded, we exclude the children with `external/*`
 # and then re-include the ones the build needs.
 external/*
-!external/quirc/
+!external/zxing-cpp/
 
 # Editor / IDE
 .vscode/

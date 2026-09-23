@@ -173,13 +173,13 @@ target_link_libraries(svg_test PRIVATE
 )
 
 # ---------------------------------------------------------------------------
-# qr_decode_test — QR Code decoder (qr_decode.c + quirc) tests
+# qr_decode_test — QR Code decoder (quirc/qr_decode_quirc.c + quirc) tests
 # Build with: cmake --build tests/build-native --target qr_decode_test
 # ---------------------------------------------------------------------------
 add_executable(qr_decode_test
     main.cpp
     test_qr_decode.cpp
-    ${QRCODE_SRC_DIR}/qr_decode.c             # Decoder wrapper (our code)
+    ${QRCODE_SRC_DIR}/quirc/qr_decode_quirc.c   # Decoder wrapper (our code)
     ${QUIRC_DIR}/quirc.c                      # quirc core
     ${QUIRC_DIR}/decode.c
     ${QUIRC_DIR}/identify.c

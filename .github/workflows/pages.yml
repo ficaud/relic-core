@@ -32,7 +32,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
         with:
-          # The demo Makefile compiles external/quirc/*.c, which is a git
+          # The demo Makefile compiles external/zxing-cpp/*.cpp, which is a git
           # submodule. Recurse so it is present in the CI workspace.
           submodules: recursive
 
