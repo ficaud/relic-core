@@ -38,25 +38,54 @@ config RELIC_QR_DECODE_MAX_DIM
 	default 224
 	help
 	  Maximum width/height (in pixels) of the grayscale image accepted by the
-	  on-device QR decoder (quirc). The ESP32-S3 can decode up to 224x224,
-	  while the classic ESP32 (DevKit V1) is limited to 192x192 to stay within
-	  its smaller RAM budget.
+	  on-device QR decoder. The ESP32-S3 decodes up to 224x224 in its internal
+	  RAM (or 640x640 when PSRAM is enabled), while the classic ESP32 (DevKit
+	  V1) is limited to 192x192 to stay within its smaller RAM budget.
 
 	  The value is baked into the embedded web page (embed-assets.py replaces
 	  __QR_MAX_DIM__) so the client downsizes the captured image accordingly.
 
 config RELIC_QR_DECODE_SERVER
-	bool "Decode QR codes on the device (quirc)"
+	bool "Decode QR codes on the device"
 	default n
 	help
-	  When enabled, the firmware embeds the quirc decoder and serves a
+	  When enabled, the firmware embeds a QR decoder and serves a
 	  POST /qr_decode endpoint: the web page uploads the grayscale image and
 	  the ESP32 decodes the QR code.
 
 	  This is opt-in per board: the classic ESP32 (DevKit V1) does not have
-	  enough RAM for quirc on top of the Wi-Fi stack, so it stays disabled and
-	  the web page falls back to local (jsQR) decoding. Only boards with enough
-	  RAM (ESP32-S3, ~400 KB app RAM) enable it in their board fragment.
+	  enough RAM for a decoder on top of the Wi-Fi stack, so it stays disabled
+	  and the web page falls back to local (jsQR) decoding. Only boards with
+	  enough RAM (ESP32-S3, ~400 KB app RAM) enable it in their board fragment.
+
+choice RELIC_QR_DECODE_BACKEND
+	prompt "QR decode backend"
+	default RELIC_QR_DECODE_BACKEND_QUIRC
+	depends on RELIC_QR_DECODE_SERVER
+	help
+	  Select the QR decoding library used by the on-device decoder. quirc is
+	  the historical backend; ZXing-cpp (QR-only build) is more robust under
+	  uneven lighting and perspective, at the cost of a C++ runtime.
+
+config RELIC_QR_DECODE_BACKEND_QUIRC
+	bool "quirc"
+
+config RELIC_QR_DECODE_BACKEND_ZXING
+	bool "ZXing-cpp (QR-only)"
+
+endchoice
+
+config RELIC_QR_DECODE_PSRAM
+	bool "Allocate QR decode buffers in external PSRAM"
+	default n
+	depends on RELIC_QR_DECODE_SERVER
+	help
+	  Route the decoder's input buffer and C++ heap allocations to external
+	  PSRAM via Zephyr's shared multi-heap, so images larger than the internal
+	  ~66 KB libc heap can be decoded (e.g. 640x640 on the XIAO ESP32S3).
+
+	  Requires CONFIG_ESP_SPIRAM=y (and CONFIG_SPIRAM_MODE_OCT=y for octal
+	  PSRAM parts such as the ESP32-S3R8 used on the XIAO ESP32S3).
 
 if WIFI_SAMPLE_DHCPV4_START
 

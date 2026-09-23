@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// QR code decoder wrapper around the quirc library.
+// QR code decoder interface. Implemented by the quirc backend (qr_decode.c)
+// and the ZXing-cpp backend (qr_decode_zxing.cpp); the HTTP handler uses this
+// interface unchanged regardless of which backend is compiled in.
 
 #ifndef QRCODE_QR_DECODE_H
 #define QRCODE_QR_DECODE_H
