@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// Unit tests for the QR code decoder (qr_decode.c + quirc).
+// Unit tests for the QR code decoder (quirc/qr_decode_quirc.c + quirc).
 //
 // These tests mirror the embedded device path (handler_qr_decode_stream in
 // src/access-point/http/src/http_handlers.c):

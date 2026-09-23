@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// WASM entry point — exposes QR code decoding (via quirc) to JavaScript.
+// WASM entry point — exposes QR code decoding (via ZXing-cpp) to JavaScript.
 //
 // This file is a thin wrapper: the actual decoding logic lives in
-// src/qrcode/qr_decode.c. It is built ONLY for the WASM demo (see
+// src/qrcode/zxing/qr_decode_zxing.cpp. It is built ONLY for the WASM demo (see
 // demo/Makefile) and is never added to the ESP32 firmware build.
 
 #include "qr_decode.h"

@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// QR code decoder wrapper around the quirc library.
+// QR code decoder interface. Implemented by the quirc backend
+// (quirc/qr_decode_quirc.c) and the ZXing-cpp backend
+// (zxing/qr_decode_zxing.cpp); the HTTP handler uses this interface unchanged
+// regardless of which backend is compiled in.
 
 #ifndef QRCODE_QR_DECODE_H
 #define QRCODE_QR_DECODE_H
@@ -16,10 +19,9 @@ extern "C"
 // ===========================================================================
 // Definitions
 // ===========================================================================
-/** Maximum supported image dimension (pixels) per side. */
 /** Maximum image dimension (px) accepted for decoding. Kept small so the
- *  image buffer plus quirc's internal state fit in the device's RAM budget.
- *  The firmware build overrides this with the per-board Kconfig value
+ *  image buffer plus the decoder's internal state fit in the device's RAM
+ *  budget. The firmware build overrides this with the per-board Kconfig value
  *  RELIC_QR_DECODE_MAX_DIM (224 on ESP32-S3, 192 on the classic ESP32).
  *  WASM demo and native tests keep the 224 default. */
 #ifndef QR_DECODE_MAX_DIM

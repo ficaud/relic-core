@@ -24,8 +24,8 @@ CompileFlags:
     - "-I/workspaces/relic-core/zephyr/lib/libc/picolibc/include"
     - "-I/workspaces/relic-core/zephyr/lib/libc/common/include"
     # Relic Core's own include dirs that aren't part of the firmware build but are
-    # referenced by demo-only / portable sources. qr_decode.c lives in
-    # src/qrcode/ and is compiled only by the demo Makefile, so its quirc
+    # referenced by demo-only / portable sources. quirc/qr_decode_quirc.c lives in
+    # src/qrcode/quirc/ and is compiled only by the demo Makefile, so its quirc
     # include path is not present in the firmware compile_commands.json.
     - "-I/workspaces/relic-core/src/qrcode"
     - "-I/workspaces/relic-core/external/quirc/lib"

@@ -41,12 +41,15 @@ seed phrases, etc.) in a secure, offline way. One specific particularity of Reli
 │   │   ├── bip39_words.c/h # BIP-39 English wordlist (generated)
 │   │   ├── slip39.c/h      # SLIP-39 mnemonic (de)compression (+ passphrase)
 │   │   └── slip39_words.c/h# SLIP-39 English wordlist (generated)
-│   ├── qrcode/             # QR encode (Nayuki) + decode (quirc, S3-only)
+│   ├── qrcode/             # QR encode (Nayuki) + decode (quirc / ZXing-cpp, S3-only)
+│   │   ├── quirc/          # quirc backend (qr_decode_quirc.c)
+│   │   └── zxing/          # ZXing-cpp backend + PSRAM operators + static Version.h
 │   └── svg/                # QR code → SVG conversion
 ├── tests/                  # Google Test unit tests (native, not Zephyr)
 ├── boards/                 # Per-board Kconfig fragments (*.conf)
 ├── external/sss/           # Reference SSS impl (dsprenkels/sss) — tests only
 ├── external/quirc/         # QR decoder (relic-quirc fork) — submodule
+├── external/zxing-cpp/     # QR decoder (relic fork, QR-only subset) — submodule
 ├── demo/                   # Web demo (WASM)
 ├── doc/                    # Documentation
 ├── tools/                  # Build/flash helpers (embed-assets.py, flash scripts)
@@ -80,8 +83,25 @@ seed phrases, etc.) in a secure, offline way. One specific particularity of Reli
 
 ### `src/qrcode/`
 - `qr_encode.c` — Nayuki QR-Code-generator (reduced build: alphanumeric, ECC LOW).
-- `qr_decode.c` — quirc wrapper (`qr_decode_begin/commit/destroy/buffer`),
-  compiled **only** when `CONFIG_RELIC_QR_DECODE_SERVER` is set (ESP32-S3 boards).
+- `quirc/qr_decode_quirc.c` — quirc backend (`qr_decode_begin/commit/destroy/buffer`),
+  compiled **only** when `CONFIG_RELIC_QR_DECODE_SERVER` + backend `quirc`.
+- `zxing/qr_decode_zxing.cpp` — ZXing-cpp backend, implements the same `qr_decode_*`
+  interface in C++20; selected when `CONFIG_RELIC_QR_DECODE_BACKEND_ZXING`.
+  Requires the C++ runtime (`CONFIG_CPP` + `GLIBCXX_LIBCPP` + `CPP_EXCEPTIONS`).
+- `zxing/cpp_psram_operators.cpp` — overrides global `operator new/delete` to route C++
+  allocations to PSRAM (`shared_multi_heap`); compiled only with
+  `CONFIG_RELIC_QR_DECODE_PSRAM`.
+- `zxing/Version.h` — static replacement for zxing-cpp's generated Version.h,
+  hard-codes the QR-only flags (`ZXING_ENABLE_QRCODE=1`, others 0).
+
+ZXing-cpp is compiled as a **QR-only reader subset**: the individual
+`external/zxing-cpp/core/src/*.cpp` + `qrcode/*.cpp` + `libzueci/zueci.c` files
+are listed directly in `CMakeLists.txt` (not via zxing-cpp's CMake project), with
+`-DZXING_INTERNAL` and C++20. The C-API and the writer-only sources are excluded;
+`external/zxing-cpp/core/src/ZXConfig.h` is patched `thread_local` → `static`
+(Xtensa has no TLS). `LocalGrid.cpp` is compiled (its `ZX_THREAD_LOCAL` uses the
+same patched macro); it is required by the QR reader since rMQR sampling was
+moved into `QRDetector.cpp`.
 
 ### `src/access-point/`
 - `http/` — `http_server.c` (single-threaded socket loop), `http_router.c`
@@ -141,11 +161,21 @@ Per-board fragments live in `boards/*.conf` and are merged after `prj.conf`:
 
 | Board | Build target | On-device QR decode |
 |---|---|---|
-| ESP32-S3-DevKitC-1 | `esp32s3_devkitc/esp32s3/procpu` | yes (`CONFIG_RELIC_QR_DECODE_SERVER=y`) |
+| ESP32-S3-DevKitC-1 | `esp32s3_devkitc/esp32s3/procpu` | yes — quirc @ 224 px |
 | ESP32-DevKit-V1 | `doit_esp32_devkit_v1/esp32/procpu` | no (jsQR fallback) |
-| Seeed XIAO ESP32S3 | `xiao_esp32s3/esp32s3/procpu` | yes |
+| Seeed XIAO ESP32S3 | `xiao_esp32s3/esp32s3/procpu` | yes — ZXing-cpp @ 640 px (PSRAM) |
 
-- `CONFIG_RELIC_QR_DECODE_MAX_DIM`: 224 (S3) / 192 (V1).
+- `CONFIG_RELIC_QR_DECODE_BACKEND`: `quirc` vs `zxing`. Only the XIAO selects
+  `zxing`; the DevKitC-1 keeps the default `quirc` (no PSRAM → zxing's C++
+  footprint + heap allocations do not fit the internal RAM).
+- `CONFIG_RELIC_QR_DECODE_MAX_DIM`: 224 (DevKitC-1) / 640 (XIAO) / 192 (V1).
+- ZXing-cpp needs a C++20 runtime on the XIAO: `CONFIG_CPP=y`,
+  `CONFIG_STD_CPP20=y`, `CONFIG_REQUIRES_FULL_LIBCPP=y`, `CONFIG_CPP_EXCEPTIONS=y`
+  (picolibc + libstdc++). The DevKitC-1 and V1 do **not** enable C++.
+- XIAO enables PSRAM (`CONFIG_RELIC_QR_DECODE_PSRAM=y`,
+  `CONFIG_ESP_SPIRAM=y`, `CONFIG_SPIRAM_MODE_OCT=y`,
+  `CONFIG_ESP_SPIRAM_HEAP_SIZE=4194304`) so its 640 px buffers and ZXing's C++
+  heap allocations live in PSRAM.
 - S3/XIAO tune `CONFIG_ESP32_WIFI_*` buffer counts down and enable
   `CONFIG_NET_CONTEXT_RCVTIMEO`.
 
@@ -201,7 +231,9 @@ ctest --test-dir build/tests --verbose      # verbose
   that builds, tests and other tooling may fail because the Zephyr SDK and build
   tools are missing.
 - **WASM demo**: `demo/` (build via Makefile, serve with `python3 demo/serve.py`,
-  port 8000).
+  port 8000). QR decoding in the demo uses the **ZXing-cpp** backend
+  (`demo/Makefile` builds `zxing/qr_decode_zxing.cpp` + the QR-only zxing subset with
+  `em++`; quirc is not part of the demo build).
 - **Asset embedding**: `tools/embed-assets.py` → `page_captive.h` (auto-run by build).
 - **clangd**: `.clangd` points to the root `compile_commands.json` symlink, which
   should be refreshed to the latest board build.
@@ -219,5 +251,11 @@ ctest --test-dir build/tests --verbose      # verbose
 - **quirc RAM**: `QR_DECODE_MAX_DIM` limits image size; quirc buffers are shrunk
   via `QUIRC_MAX_PAYLOAD/CAPSTONES/GRIDS` and `QUIRC_FLOAT_TYPE=float` (ESP32-S3
   FPU is single-precision).
+- **ZXing-cpp C++20 + no TLS on Xtensa**: the XIAO enables the full C++
+  runtime (picolibc + libstdc++ + exceptions). Xtensa has no thread-local
+  storage, so `external/zxing-cpp/core/src/ZXConfig.h` is patched
+  `thread_local` → `static`; `LocalGrid.cpp` uses the same patched
+  `ZX_THREAD_LOCAL` macro. Exceptions on Xtensa are not covered by Zephyr CI —
+  validate with a `try/throw` smoke test on a new toolchain/revision.
 - **Versioning**: README states Zephyr v4.4.2; do not trust older docs that say
   v4.4.1.

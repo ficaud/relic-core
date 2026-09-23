@@ -4,3 +4,6 @@
 [submodule "external/quirc"]
 	path = external/quirc
 	url = https://github.com/ficaud/relic-quirc.git 
+[submodule "external/zxing-cpp"]
+	path = external/zxing-cpp
+	url = https://github.com/ficaud/relic-zxing-cpp.git
