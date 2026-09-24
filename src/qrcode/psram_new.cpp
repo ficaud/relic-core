@@ -4,10 +4,11 @@
 //
 // Compiled only when CONFIG_RELIC_QR_DECODE_PSRAM is set. ZXing-cpp allocates
 // its internal state (BitMatrix, binarizer buffers, std::string/std::vector)
-// through the global operator new; at 640x640 those allocations exceed the
-// ~66 KB internal libc heap, so on the XIAO we redirect them to the 8 MB PSRAM
-// via Zephyr's shared multi-heap. The single-threaded HTTP server means there
-// is no concurrency to worry about.
+// through the global operator new; at 640x640 those allocations far exceed the
+// small internal libc heap (a few tens of KB once the C++ runtime is linked),
+// so on the XIAO we redirect them to the 8 MB PSRAM via Zephyr's shared
+// multi-heap. The single-threaded HTTP server means there is no concurrency to
+// worry about.
 
 #if defined(CONFIG_RELIC_QR_DECODE_PSRAM)
 

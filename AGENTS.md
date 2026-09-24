@@ -160,16 +160,17 @@ Per-board fragments live in `boards/*.conf` and are merged after `prj.conf`:
 
 | Board | Build target | On-device QR decode |
 |---|---|---|
-| ESP32-S3-DevKitC-1 | `esp32s3_devkitc/esp32s3/procpu` | yes — ZXing-cpp @ 224 px (C++) |
+| ESP32-S3-DevKitC-1 | `esp32s3_devkitc/esp32s3/procpu` | yes — quirc @ 224 px |
 | ESP32-DevKit-V1 | `doit_esp32_devkit_v1/esp32/procpu` | no (jsQR fallback) |
 | Seeed XIAO ESP32S3 | `xiao_esp32s3/esp32s3/procpu` | yes — ZXing-cpp @ 640 px (PSRAM) |
 
-- `CONFIG_RELIC_QR_DECODE_BACKEND`: `quirc` (default, rollback) vs `zxing`.
-  Both S3 boards select `zxing`; `quirc` stays compiled-in behind the choice.
+- `CONFIG_RELIC_QR_DECODE_BACKEND`: `quirc` vs `zxing`. Only the XIAO selects
+  `zxing`; the DevKitC-1 keeps the default `quirc` (no PSRAM → zxing's C++
+  footprint + heap allocations do not fit the internal RAM).
 - `CONFIG_RELIC_QR_DECODE_MAX_DIM`: 224 (DevKitC-1) / 640 (XIAO) / 192 (V1).
-- ZXing-cpp needs a C++20 runtime on the S3 boards: `CONFIG_CPP=y`,
+- ZXing-cpp needs a C++20 runtime on the XIAO: `CONFIG_CPP=y`,
   `CONFIG_STD_CPP20=y`, `CONFIG_REQUIRES_FULL_LIBCPP=y`, `CONFIG_CPP_EXCEPTIONS=y`
-  (picolibc + libstdc++). The V1 does **not** enable C++.
+  (picolibc + libstdc++). The DevKitC-1 and V1 do **not** enable C++.
 - XIAO enables PSRAM (`CONFIG_RELIC_QR_DECODE_PSRAM=y`,
   `CONFIG_ESP_SPIRAM=y`, `CONFIG_SPIRAM_MODE_OCT=y`,
   `CONFIG_ESP_SPIRAM_HEAP_SIZE=4194304`) so its 640 px buffers and ZXing's C++
@@ -247,7 +248,7 @@ ctest --test-dir build/tests --verbose      # verbose
 - **quirc RAM**: `QR_DECODE_MAX_DIM` limits image size; quirc buffers are shrunk
   via `QUIRC_MAX_PAYLOAD/CAPSTONES/GRIDS` and `QUIRC_FLOAT_TYPE=float` (ESP32-S3
   FPU is single-precision).
-- **ZXing-cpp C++20 + no TLS on Xtensa**: the S3 boards enable the full C++
+- **ZXing-cpp C++20 + no TLS on Xtensa**: the XIAO enables the full C++
   runtime (picolibc + libstdc++ + exceptions). Xtensa has no thread-local
   storage, so `external/zxing-cpp/core/src/ZXConfig.h` is patched
   `thread_local` → `static`; `LocalGrid.cpp` uses the same patched
