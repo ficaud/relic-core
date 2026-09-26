@@ -8,10 +8,10 @@
 #
 # Usage:
 #   docker compose up -d
-#   # then open http://localhost:8080
+#   # then open http://localhost:8080  (or https://localhost:8443 for camera access)
 #
-# To use a different port, override with:
-#   RELIC_PORT=9090 docker compose up -d
+# To use different ports, override with:
+#   RELIC_PORT=9090 RELIC_HTTPS_PORT=9443 docker compose up -d
 #
 # To identify which version of Relic Core is running, open:
 #   http://localhost:8080/version.json
@@ -29,5 +29,6 @@ services:
     container_name: relic-core
     ports:
       - "${RELIC_PORT:-8080}:80"
+      - "${RELIC_HTTPS_PORT:-8443}:443"
     restart: unless-stopped
 
