@@ -25,6 +25,10 @@ on:
       - 'src/svg/**'
   workflow_dispatch:
     inputs:
+      ref:
+        description: 'Branche ou tag à builder (ex: dev/jfi)'
+        required: false
+        type: string
       version:
         description: 'Version tag to publish (ex: v1.0.0)'
         required: false
@@ -48,6 +52,7 @@ jobs:
           # The demo Makefile compiles external/quirc/*.c, which is a git
           # submodule. Recurse so it is present in the build context.
           submodules: recursive
+          ref: ${{ inputs.ref || github.ref }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
@@ -68,25 +73,38 @@ jobs:
           IMG="ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}"
           echo "image=$IMG" >> "$GITHUB_OUTPUT"
 
+          # Branch actually built (manual dispatch may target a specific ref).
+          if [ -n "${{ inputs.ref }}" ]; then
+            BRANCH="${{ inputs.ref }}"
+          else
+            BRANCH="${{ github.ref_name }}"
+          fi
+
+          # Docker tags cannot contain '/' or uppercase; sanitize branch names.
+          sanitize() { echo "$1" | tr '[:upper:]' '[:lower:]' | tr '/_' '-'; }
+
           # Determine the version string for the image manifest.
           if [ -n "${{ inputs.version }}" ]; then
             # Manually triggered from a release: publish the exact version.
             echo "tags=$IMG:latest,$IMG:${{ inputs.version }}" >> "$GITHUB_OUTPUT"
             echo "version=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
-          elif [ "${{ github.event_name }}" = "push" ] && [ "${{ startsWith(github.ref, 'refs/tags/') }}" = "true" ]; then
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
             # Git tag (release): tag with the version and mark as stable.
             echo "tags=$IMG:latest,$IMG:${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
             echo "version=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
-          elif [ "${{ github.ref_name }}" = "dev/jfi" ]; then
-            # Warning : dev/jfi is the only branch that triggers the dev build.
-            # Development branch: tag as dev, do NOT overwrite latest.
-            echo "tags=$IMG:dev" >> "$GITHUB_OUTPUT"
-            echo "version=dev" >> "$GITHUB_OUTPUT"
-          else
+          elif [ "$BRANCH" = "main" ] || [ "$BRANCH" = "master" ]; then
             # main / master: stable build, tag as latest.
             echo "tags=$IMG:latest" >> "$GITHUB_OUTPUT"
             echo "version=latest" >> "$GITHUB_OUTPUT"
+          else
+            # Development branch: tag with the sanitized branch name, do NOT
+            # overwrite latest (ex: dev/jfi -> dev-jfi).
+            TAG="$(sanitize "$BRANCH")"
+            echo "tags=$IMG:$TAG" >> "$GITHUB_OUTPUT"
+            echo "version=$TAG" >> "$GITHUB_OUTPUT"
           fi
+
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
 
       - name: Build and push image
         uses: docker/build-push-action@v7
@@ -99,8 +117,8 @@ jobs:
           build-args: |
             VERSION=${{ steps.meta.outputs.version }}
             COMMIT_SHA=${{ github.sha }}
-            BRANCH=${{ github.ref_name }}
-            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            BRANCH=${{ steps.meta.outputs.branch }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp || github.event.repository.pushed_at }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
