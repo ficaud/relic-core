@@ -43,6 +43,7 @@ services:
     container_name: relic-core
     ports:
       - "8080:80"
+      - "8443:443"
     restart: unless-stopped
 ```
 
@@ -62,6 +63,30 @@ docker compose down
 ```
 
 Open `http://localhost:8080`.
+
+## Camera access (QR scanning) — HTTPS required
+
+Browsers only expose the camera (`getUserMedia`) in a **secure context**.
+`http://localhost` is treated as secure, but a plain HTTP connection to a
+machine on your LAN (e.g. `http://192.168.1.56:8080`) is not, so the camera is
+blocked and the page falls back to the file picker.
+
+The image serves the same UI over HTTPS on port **443** (mapped to `8443`) with
+a self-signed certificate generated at build time:
+
+```
+https://localhost:8443
+https://<your-device-ip>:8443
+```
+
+The first time, the browser shows a certificate warning (the certificate is
+self-signed). Click **Advanced → Proceed anyway** to trust it for that session;
+the page then runs in a secure context and the camera works, including over the
+LAN IP.
+
+> If you want a trusted certificate (no warning), generate one with
+> [mkcert](https://github.com/FiloSottile/mkcert) and mount it over
+> `/etc/nginx/certs/`.
 
 ## Identify the running version
 

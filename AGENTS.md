@@ -233,6 +233,11 @@ ctest --test-dir build/tests --verbose      # verbose
   port 8000). QR decoding in the demo uses the **ZXing-cpp** backend
   (`demo/Makefile` builds `qr_decode_zxing.cpp` + the QR-only zxing subset with
   `em++`; quirc is not part of the demo build).
+- **Docker demo (HTTPS)**: the `docker/Dockerfile` image serves the demo over
+  HTTP (port 80) and HTTPS (port 443) with a self-signed certificate generated
+  at build time (`/etc/nginx/certs/`). Camera access requires a secure context,
+  so use `https://<host>:8443` (accept the one-time cert warning); plain
+  `http://<LAN-IP>` falls back to the file picker.
 - **Asset embedding**: `tools/embed-assets.py` → `page_captive.h` (auto-run by build).
 - **clangd**: `.clangd` points to the root `compile_commands.json` symlink, which
   should be refreshed to the latest board build.

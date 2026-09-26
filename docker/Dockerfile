@@ -79,6 +79,19 @@ ARG COMMIT_SHA=unknown
 ARG BRANCH=unknown
 ARG BUILD_DATE=unknown
 
+# Generate a self-signed TLS certificate so the demo can be served over
+# HTTPS. Camera access (getUserMedia) is only available in a secure context,
+# which plain HTTP on a LAN IP is not. A self-signed certificate still
+# triggers a one-time browser warning, but once accepted the page is a secure
+# context and the camera works.
+RUN apk add --no-cache openssl && \
+    mkdir -p /etc/nginx/certs && \
+    openssl req -x509 -nodes -newkey rsa:2048 -days 3650 \
+        -keyout /etc/nginx/certs/relic-core.key \
+        -out  /etc/nginx/certs/relic-core.crt \
+        -subj "/CN=relic-core" \
+        -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
+
 # Copy the nginx configuration (adds application/wasm MIME type).
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
 
