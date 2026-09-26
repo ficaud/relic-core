@@ -19,3 +19,9 @@ whether WASM is available and fall back to `fetch()` calls on the device.
 - `../src/access-point/assets/` — HTML, CSS & dual-mode JS (WASM + fetch fallback)
 - `src/main.c` — Emscripten glue exposing `sss_split_wasm` / `sss_combine_wasm`
 - Built by a GitHub Action on every push and deployed to **GitHub Pages**
+
+## Camera access
+
+QR scanning with the live camera requires a **secure context**: serve over
+HTTPS, or open via `http://localhost`. On a plain `http://<LAN-IP>` page the
+browser blocks the camera and the scanner falls back to the file picker.
