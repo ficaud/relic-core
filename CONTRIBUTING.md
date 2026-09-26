@@ -190,6 +190,15 @@ changes. Changes require review before they can be merged.
 
 ## Local WASM Demo Server
 
+If you want to test the HTTPS certificate and the docker compose configuration, it's recommended to build the docker image that include self-signed certificates.
+
+```bash
+docker compose build && docker compose up -d
+docker exec relic-core sh -c 'ls -l /etc/nginx/certs && openssl x509 -in /etc/nginx/certs/relic-core.crt -noout -subject'
+```
+
+You can also run the local version on HTTP using the python script as follows.
+
 Build the WASM demo using the `Build Demo WASM (Makefile)` task, then start a
 local server. In the dev container, use port forwarding on port 8000:
 

@@ -46,8 +46,8 @@
             </div>
         </div>
 
-        <p class="qr-note">📷 Use an external browser (Chrome, Brave) or save QR photos to your gallery first, then pick
-            from Photo Library.</p>
+        <p class="qr-note">📷 Take a photo of the QR code with your camera, then pick the image (or select
+            one from your Photo Library).</p>
 
         <button id="unsplit-btn" class="msg-btn" style="width:100%;margin-bottom:16px;">Reconstruct</button>
 
@@ -61,19 +61,10 @@
         <div id="toast" class="toast">Copied!</div>
     </div>
 
-    <!-- Hidden file input for QR scan (fallback on HTTP/non-camera devices) -->
-    <input type="file" id="qr-file-input" class="qr-file-input" accept="image/*">
+    <!-- Hidden file input for QR scan (opens the native camera on mobile) -->
+    <input type="file" id="qr-file-input" class="qr-file-input" accept="image/*" capture="environment">
 
-    <!-- Live camera overlay (used when getUserMedia is available) -->
-    <div id="qr-overlay" class="qr-overlay hidden">
-        <div class="qr-overlay-box">
-            <video id="qr-video" class="qr-video" playsinline autoplay muted></video>
-            <div class="qr-status" id="qr-status">Point the camera at a QR code</div>
-            <button id="qr-close" class="qr-close" title="Close">&#x2715;</button>
-        </div>
-    </div>
-
-    <script src="scripts/unsplit.js?v=6"></script>
+    <script src="scripts/unsplit.js?v=7"></script>
 </body>
 
 </html>

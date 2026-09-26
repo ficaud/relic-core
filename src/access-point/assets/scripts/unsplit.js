@@ -278,18 +278,15 @@
         copyText(resultText.textContent, copyResultBtn);
     });
 
-    /* ── QR Code scanner (dual-mode: live camera or file picker) ── */
+    /* ── QR Code scanner (photo / file picker) ──
+       Uniform across the ESP32 captive portal and the WASM demo: the camera
+       is never streamed live. Instead the user takes a photo with the native
+       camera app (which has autofocus/zoom) via capture="environment", or
+       picks an existing image. ── */
     var qrFileInput = document.getElementById('qr-file-input');
-    var qrOverlay    = document.getElementById('qr-overlay');
-    var qrVideo      = document.getElementById('qr-video');
-    var qrStatus     = document.getElementById('qr-status');
-    var qrClose      = document.getElementById('qr-close');
     var qrCanvas     = document.createElement('canvas');
     var qrCtx        = qrCanvas.getContext('2d', { willReadFrequently: true });
     var targetRow    = null;
-    var qrStream     = null;
-    var qrAnim       = null;
-    var cameraFailed = false;
 
     var qrBtns = document.querySelectorAll('.qr-btn');
     qrBtns.forEach(function (btn) {
@@ -300,30 +297,8 @@
     });
 
     function openQRScanner() {
-        // Only try live camera on secure contexts (HTTPS / localhost).
-        // On HTTP (ESP32 on 192.168.4.1) or after a previous failure we go
-        // directly to file picker — synchronous .click() works on iOS Safari.
-        if (!cameraFailed && window.isSecureContext &&
-            navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-            navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } }
-            })
-                .then(function (stream) {
-                    qrStream = stream;
-                    qrVideo.srcObject = stream;
-                    qrVideo.play();
-                    qrOverlay.classList.remove('hidden');
-                    qrStatus.textContent = 'Point the camera at a QR code';
-                    startQRScan();
-                })
-                .catch(function () {
-                    cameraFailed = true;
-                    showToast('Camera unavailable — tap \uD83D\uDCF7 again');
-                });
-        } else {
-            // Synchronous user-gesture path — no setTimeout!
-            qrFileInput.click();
-        }
+        // Synchronous user-gesture path — no setTimeout! Works on iOS Safari.
+        qrFileInput.click();
     }
 
     /* ── QR decode ──
@@ -336,7 +311,6 @@
        Local decoding uses WASM quirc (demo) or jsQR (classic ESP32). ── */
     var QR_CLIENT_MAX_DIM = parseInt('__QR_MAX_DIM__', 10) || 224;
     var QR_DECODE_SERVER  = parseInt('__QR_DECODE_SERVER__', 10) === 1;
-    var QR_SCAN_INTERVAL_MS = 250;
 
     function drawToGray(src, naturalW, naturalH) {
         var scale = Math.min(1, QR_CLIENT_MAX_DIM / Math.max(naturalW, naturalH));
@@ -505,7 +479,7 @@
         return xPart + ':' + hex;
     }
 
-    /* Sync local decode from a source element (camera frame or image). */
+    /* Sync local decode from a source element (image). */
     function decodeLocal(src, naturalW, naturalH) {
         if (qrDecodeModule) {
             var frame = drawToGray(src, naturalW, naturalH);
@@ -530,61 +504,7 @@
         return Promise.resolve(null);
     }
 
-    function startQRScan() {
-        if (qrStatus) {
-            qrStatus.textContent = 'Point the camera at a QR code';
-        }
-
-        var lastScanTime = 0;
-        var scanInFlight = false;
-
-        // On the ESP32-S3 the ~50 KB uploads are throttled (~250 ms) so they
-        // do not saturate the AP link, and requests never stack up.
-        function tick() {
-            if (!scanInFlight && qrVideo.readyState >= qrVideo.HAVE_ENOUGH_DATA && qrVideo.videoWidth > 0) {
-                var now = Date.now();
-                if (now - lastScanTime >= QR_SCAN_INTERVAL_MS) {
-                    lastScanTime = now;
-                    var vw = qrVideo.videoWidth, vh = qrVideo.videoHeight;
-
-                    if (QR_DECODE_SERVER) {
-                        var frame = drawToGray(qrVideo, vw, vh);
-                        scanInFlight = true;
-                        decodeGray(frame.gray, frame.w, frame.h).then(function (text) {
-                            scanInFlight = false;
-                            if (text) {
-                                stopQRScan();
-                                fillShareFromQR(text.trim());
-                            }
-                        });
-                    } else {
-                        var text = decodeLocal(qrVideo, vw, vh);
-                        if (text) {
-                            stopQRScan();
-                            fillShareFromQR(text.trim());
-                            return;
-                        }
-                    }
-                }
-            }
-            qrAnim = requestAnimationFrame(tick);
-        }
-        qrAnim = requestAnimationFrame(tick);
-    }
-
-    function stopQRScan() {
-        if (qrAnim) { cancelAnimationFrame(qrAnim); qrAnim = null; }
-        if (qrStream) { qrStream.getTracks().forEach(function (t) { t.stop(); }); qrStream = null; }
-        qrVideo.srcObject = null;
-        qrOverlay.classList.add('hidden');
-    }
-
-    qrClose.addEventListener('click', stopQRScan);
-    qrOverlay.addEventListener('click', function (e) {
-        if (e.target === qrOverlay) stopQRScan();
-    });
-
-    /* ── File / gallery scan ── */
+    /* ── Photo / gallery scan ── */
     qrFileInput.addEventListener('change', function () {
         var file = qrFileInput.files[0];
         if (!file) return;

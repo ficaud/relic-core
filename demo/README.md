@@ -22,6 +22,6 @@ whether WASM is available and fall back to `fetch()` calls on the device.
 
 ## Camera access
 
-QR scanning with the live camera requires a **secure context**: serve over
-HTTPS, or open via `http://localhost`. On a plain `http://<LAN-IP>` page the
-browser blocks the camera and the scanner falls back to the file picker.
+QR codes are scanned from a **photo** (or an existing image), not a live camera
+stream — the same behaviour as the ESP32 captive portal. On mobile the 📷 button
+opens the native camera to take the picture; on desktop it opens a file picker.

@@ -79,11 +79,9 @@ ARG COMMIT_SHA=unknown
 ARG BRANCH=unknown
 ARG BUILD_DATE=unknown
 
-# Generate a self-signed TLS certificate so the demo can be served over
-# HTTPS. Camera access (getUserMedia) is only available in a secure context,
-# which plain HTTP on a LAN IP is not. A self-signed certificate still
-# triggers a one-time browser warning, but once accepted the page is a secure
-# context and the camera works.
+# Generate a self-signed TLS certificate so the demo can also be served over
+# HTTPS (port 443). A self-signed certificate still triggers a one-time browser
+# warning, but once accepted the page runs in a secure context.
 RUN apk add --no-cache openssl && \
     mkdir -p /etc/nginx/certs && \
     openssl req -x509 -nodes -newkey rsa:2048 -days 3650 \
