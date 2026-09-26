@@ -60,6 +60,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     zsh \
     lsof \
     fd-find \
+    tmux \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
