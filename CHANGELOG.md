@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### changed
+- `unsplit` : QR scan now uses the photo/file-picker flow only (native camera on mobile via `capture="environment"`), aligning the WASM demo with the ESP32 captive portal
+
 ## [1.7.0] - 2026-09-16
 
 ### added

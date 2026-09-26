@@ -235,9 +235,8 @@ ctest --test-dir build/tests --verbose      # verbose
   `em++`; quirc is not part of the demo build).
 - **Docker demo (HTTPS)**: the `docker/Dockerfile` image serves the demo over
   HTTP (port 80) and HTTPS (port 443) with a self-signed certificate generated
-  at build time (`/etc/nginx/certs/`). Camera access requires a secure context,
-  so use `https://<host>:8443` (accept the one-time cert warning); plain
-  `http://<LAN-IP>` falls back to the file picker.
+  at build time (`/etc/nginx/certs/`). QR scanning uses the **photo/file-picker**
+  flow (no live camera), identical to the ESP32 captive portal.
 - **Asset embedding**: `tools/embed-assets.py` → `page_captive.h` (auto-run by build).
 - **clangd**: `.clangd` points to the root `compile_commands.json` symlink, which
   should be refreshed to the latest board build.
