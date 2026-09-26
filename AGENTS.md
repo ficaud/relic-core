@@ -230,7 +230,9 @@ ctest --test-dir build/tests --verbose      # verbose
   that builds, tests and other tooling may fail because the Zephyr SDK and build
   tools are missing.
 - **WASM demo**: `demo/` (build via Makefile, serve with `python3 demo/serve.py`,
-  port 8000).
+  port 8000). QR decoding in the demo uses the **ZXing-cpp** backend
+  (`demo/Makefile` builds `qr_decode_zxing.cpp` + the QR-only zxing subset with
+  `em++`; quirc is not part of the demo build).
 - **Asset embedding**: `tools/embed-assets.py` → `page_captive.h` (auto-run by build).
 - **clangd**: `.clangd` points to the root `compile_commands.json` symlink, which
   should be refreshed to the latest board build.

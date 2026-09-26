@@ -3,9 +3,10 @@
 // QR code decoder wrapper around the quirc library.
 //
 // This file is intentionally portable (no Zephyr dependency) so it can be
-// compiled both for the ESP32 firmware and for the WASM demo under Emscripten.
-// On the ESP32 it is used by the /qr_decode HTTP handler: the front-end
-// uploads a grayscale image and this module decodes it with quirc.
+// compiled for the ESP32 firmware. On the ESP32 it is used by the /qr_decode
+// HTTP handler: the front-end uploads a grayscale image and this module decodes
+// it with quirc. (The WASM demo uses the ZXing-cpp backend instead, see
+// src/qrcode/qr_decode_zxing.cpp.)
 //
 // The maximum image dimension is set per board through the Kconfig symbol
 // RELIC_QR_DECODE_MAX_DIM (baked in via QR_DECODE_MAX_DIM); see qr_decode.h.

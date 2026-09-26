@@ -38,7 +38,7 @@ COPY src/sss/               src/sss/
 COPY src/qrcode/            src/qrcode/
 COPY src/svg/               src/svg/
 COPY src/compression/        src/compression/
-COPY external/quirc/        external/quirc/
+COPY external/zxing-cpp/     external/zxing-cpp/
 
 # Build the WASM modules (sss.*, qr.*, compression.* and qr_decode.*) into
 # demo/scripts/.
