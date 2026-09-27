@@ -73,7 +73,7 @@ def build_page(html_raw: str, css_raw: str | None, assets_dir: str, qr_max_dim: 
         return match.group(0)  # file not found — leave as-is
 
     html_raw = re.sub(
-        r'<script\s+src="([^"]+)"\s*></script>',
+        r'<script\s+src="([^"\s]+)"\s*></script>',
         inline_js,
         html_raw,
     )
