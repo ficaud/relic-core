@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.1] - 2026-09-28
+
+### added
+- `.devcontainer/Dockerfile`: tmux to devcontainer
+- `docker.yml`: dev/** are now allowed to publish their docker image (for test purpose)
+- `docker/Dockerfile`: nginx self signed certificate to allow https access to the demo page
+- `zxing` : added zxing-cpp to decode qrcode for XIAO32 in PSRAM ([#59](https://github.com/ficaud/relic-core/issues/59))
+- `qr_decode_zxing.cpp`: added a new qr_decode API (thanks to zxing) to decode a raw RGBA buffer to a raw grayscale buffer
+
+### fixed
+- `unsplit.js`: no more live camera feed on the desktop demo page because that make is harder to scan qrcode in the unsplit page (only file selection when on desktop)
+- `embed-assets.py`: HTML filtering regexp ([#3](https://github.com/ficaud/relic-core/security/code-scanning/3))
+- `build.yml`: add limiting permission to workflow to allow the workflow to run on forks ([#1](https://github.com/ficaud/relic-core/security/code-scanning/1) and [#2](https://github.com/ficaud/relic-core/security/code-scanning/2))
+
 ## [1.7.0] - 2026-09-16
 
 ### added
