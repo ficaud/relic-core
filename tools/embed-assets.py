@@ -55,7 +55,7 @@ def build_page(html_raw: str, css_raw: str | None, assets_dir: str, qr_max_dim: 
     import re
     if not server_decode:
         html_raw = re.sub(
-            r'(<script\s+src="scripts/unsplit\.js[^"]*"\s*></script>)',
+            r'(<script\s+src="scripts/unsplit\.js[^"]*"\s*></script\s*>)',
             '<script src="scripts/jsQR.js"></script>\n\\1',
             html_raw,
         )
@@ -73,7 +73,7 @@ def build_page(html_raw: str, css_raw: str | None, assets_dir: str, qr_max_dim: 
         return match.group(0)  # file not found — leave as-is
 
     html_raw = re.sub(
-        r'<script\s+src="([^"\s]+)"\s*></script>',
+        r'<script\s+src="(scripts/[^"\s]+)"\s*></script\s*>',
         inline_js,
         html_raw,
     )
