@@ -308,7 +308,7 @@
          placeholder stays, so parseInt() yields NaN and we use 224.
        - __QR_DECODE_SERVER__: 1 when the ESP32 decodes (ESP32-S3), 0 when
          the page must decode locally (classic ESP32 / WASM demo).
-       Local decoding uses WASM quirc (demo) or jsQR (classic ESP32). ── */
+       Local decoding uses WASM ZXing (demo) or jsQR (classic ESP32). ── */
     var QR_CLIENT_MAX_DIM = parseInt('__QR_MAX_DIM__', 10) || 224;
     var QR_DECODE_SERVER  = parseInt('__QR_DECODE_SERVER__', 10) === 1;
 
@@ -332,14 +332,30 @@
         return { gray: gray, w: w, h: h };
     }
 
+    function drawToRgba(src, naturalW, naturalH) {
+        var scale = Math.min(1, QR_CLIENT_MAX_DIM / Math.max(naturalW, naturalH));
+        var w = Math.max(1, Math.round(naturalW * scale));
+        var h = Math.max(1, Math.round(naturalH * scale));
+
+        qrCanvas.width  = w;
+        qrCanvas.height = h;
+        qrCtx.imageSmoothingEnabled = true;
+        qrCtx.drawImage(src, 0, 0, w, h);
+
+        // getImageData() already returns RGBA (R,G,B,A); ZXing reads the RGB
+        // bytes and ignores alpha, so pass the frame through untouched — no
+        // per-pixel conversion in JS.
+        return { data: qrCtx.getImageData(0, 0, w, h).data, w: w, h: h };
+    }
+
     /* ── Device decode (ESP32-S3): POST the grayscale frame to /qr_decode,
-       where quirc runs on-device. ── */
-    function decodeWithServer(gray, w, h) {
-        if (!gray || !w || !h) return Promise.resolve(null);
+       where ZXing or quirc runs on-device. ── */
+    function decodeWithServer(data, w, h) {
+        if (!data || !w || !h) return Promise.resolve(null);
         return fetch('/qr_decode?w=' + w + '&h=' + h, {
             method: 'POST',
             headers: { 'Content-Type': 'application/octet-stream' },
-            body: gray
+            body: data
         })
             .then(function (r) {
                 if (!r.ok) return null;
@@ -351,21 +367,24 @@
             .catch(function () { return null; });
     }
 
-    /* ── Local decode: WASM quirc (demo) or jsQR (classic ESP32). ── */
-    function decodeWithWasm(gray, w, h) {
-        if (!qrDecodeModule || !qrDecodeModule._wasm_qr_decode) return null;
+    /* ── Local decode: WASM ZXing (demo) or jsQR (classic ESP32). ── */
+    function decodeWithWasm(data, w, h, bpp) {
+        if (!qrDecodeModule) return null;
+        var isRgba = bpp === 4;
+        var fn = isRgba ? qrDecodeModule._wasm_qr_decode_rgba : qrDecodeModule._wasm_qr_decode;
+        if (!fn) return null;
 
         var outSize = 2048;
-        var grayPtr = qrDecodeModule._malloc(w * h);
+        var dataPtr = qrDecodeModule._malloc(w * h * bpp);
         var outPtr  = qrDecodeModule._malloc(outSize);
-        if (!grayPtr || !outPtr) {
-            if (grayPtr) qrDecodeModule._free(grayPtr);
+        if (!dataPtr || !outPtr) {
+            if (dataPtr) qrDecodeModule._free(dataPtr);
             if (outPtr)  qrDecodeModule._free(outPtr);
             return null;
         }
 
-        qrDecodeModule.HEAPU8.set(gray, grayPtr);
-        var len = qrDecodeModule._wasm_qr_decode(grayPtr, w, h, outPtr, outSize);
+        qrDecodeModule.HEAPU8.set(data, dataPtr);
+        var len = fn(dataPtr, w, h, outPtr, outSize);
 
         var text = null;
         if (len > 0) {
@@ -383,7 +402,7 @@
             }
         }
 
-        qrDecodeModule._free(grayPtr);
+        qrDecodeModule._free(dataPtr);
         qrDecodeModule._free(outPtr);
         return text;
     }
@@ -482,8 +501,12 @@
     /* Sync local decode from a source element (image). */
     function decodeLocal(src, naturalW, naturalH) {
         if (qrDecodeModule) {
+            if (qrDecodeModule._wasm_qr_decode_rgba) {
+                var rgbaFrame = drawToRgba(src, naturalW, naturalH);
+                return decodeWithWasm(rgbaFrame.data, rgbaFrame.w, rgbaFrame.h, 4);
+            }
             var frame = drawToGray(src, naturalW, naturalH);
-            return decodeWithWasm(frame.gray, frame.w, frame.h);
+            return decodeWithWasm(frame.gray, frame.w, frame.h, 1);
         }
         if (typeof jsQR === 'function') {
             var text = decodeWithJsQR(src, naturalW, naturalH);
@@ -493,11 +516,11 @@
     }
 
     /* Async: device first (ESP32-S3), WASM fallback (demo). */
-    function decodeGray(gray, w, h) {
+    function decodeOnDevice(data, w, h) {
         if (QR_DECODE_SERVER) {
-            return decodeWithServer(gray, w, h).then(function (text) {
+            return decodeWithServer(data, w, h).then(function (text) {
                 if (text) return text;
-                if (qrDecodeModule) return decodeWithWasm(gray, w, h);
+                if (qrDecodeModule) return decodeWithWasm(data, w, h, 1);
                 return null;
             });
         }
@@ -535,7 +558,7 @@
 
         if (QR_DECODE_SERVER) {
             var frame = drawToGray(img, iw, ih);
-            return decodeGray(frame.gray, frame.w, frame.h);
+            return decodeOnDevice(frame.gray, frame.w, frame.h);
         }
         return Promise.resolve(decodeLocal(img, iw, ih));
     }

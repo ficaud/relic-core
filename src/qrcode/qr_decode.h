@@ -34,6 +34,10 @@ extern "C"
 /** Maximum size of a decoded payload (mirrors QUIRC_MAX_PAYLOAD). */
 #define QR_DECODE_MAX_PAYLOAD (2048)
 
+/** Bytes per pixel accepted by qr_decode_begin(). */
+#define QR_DECODE_BPP_GRAY (1) /**< Grayscale / luminance */
+#define QR_DECODE_BPP_RGBA (4) /**< RGBA (ZXing backend only) */
+
 /** Opaque streaming decoder context. */
 struct qr_decode_ctx;
 
@@ -60,24 +64,29 @@ int qr_decode_gray(const uint8_t *gray, int width, int height, char *out, size_t
 // Streaming decode (allocate once, fill the buffer, then commit)
 // ===========================================================================
 /**
- * @brief Create a decoder context and allocate the grayscale image buffer.
+ * @brief Create a decoder context and allocate the image buffer.
  *
  * Use this when the pixel data arrives as a stream (e.g. an HTTP body) so the
- * image is written directly into quirc's buffer — avoiding a second full copy
- * of the image in RAM (important on memory-constrained targets).
+ * image is written directly into the decoder's buffer — avoiding a second full
+ * copy of the image in RAM (important on memory-constrained targets).
  *
  * @param width[in]  Image width in pixels.
  * @param height[in] Image height in pixels.
+ * @param bpp[in]    Bytes per pixel (QR_DECODE_BPP_GRAY = grayscale/Lum,
+ *                   QR_DECODE_BPP_RGBA = RGBA). Only the ZXing-cpp backend
+ *                   accepts QR_DECODE_BPP_RGBA; quirc only accepts
+ *                   QR_DECODE_BPP_GRAY.
  *
- * @return A decoder context, or NULL on error (invalid dims / out of memory).
+ * @return A decoder context, or NULL on error (invalid dims / bpp / OOM).
  */
-struct qr_decode_ctx *qr_decode_begin(int width, int height);
+struct qr_decode_ctx *qr_decode_begin(int width, int height, int bpp);
 
 /**
- * @brief Return a pointer to the grayscale buffer to fill.
+ * @brief Return a pointer to the image buffer to fill.
  *
- * The buffer holds exactly width * height bytes. The caller writes the pixel
- * data here before calling qr_decode_commit().
+ * The buffer holds exactly width * height * bpp bytes (bpp being the value
+ * passed to qr_decode_begin()). The caller writes the pixel data here before
+ * calling qr_decode_commit().
  *
  * @param ctx[in] Decoder context from qr_decode_begin().
  *
@@ -91,9 +100,8 @@ uint8_t *qr_decode_buffer(struct qr_decode_ctx *ctx);
  * @param ctx[in]      Decoder context from qr_decode_begin().
  * @param out[out]     Buffer for the decoded payload (null-terminated).
  * @param out_size[in] Size of the output buffer.
- * @param grids_out[out] Optional. Receives the number of QR grids quirc
- *                      identified (0 means no QR code was found at all).
- *                      May be NULL.
+ * @param grids_out[out] Optional. Receives the number of QR grids identified
+ *                      (0 means no QR code was found at all). May be NULL.
  *
  * @return The payload length on success (>= 0), or a negative value on error.
  */

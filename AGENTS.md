@@ -85,14 +85,29 @@ seed phrases, etc.) in a secure, offline way. One specific particularity of Reli
 - `qr_encode.c` — Nayuki QR-Code-generator (reduced build: alphanumeric, ECC LOW).
 - `quirc/qr_decode_quirc.c` — quirc backend (`qr_decode_begin/commit/destroy/buffer`),
   compiled **only** when `CONFIG_RELIC_QR_DECODE_SERVER` + backend `quirc`.
+  Accepts grayscale input only (1 byte/pixel).
 - `zxing/qr_decode_zxing.cpp` — ZXing-cpp backend, implements the same `qr_decode_*`
   interface in C++20; selected when `CONFIG_RELIC_QR_DECODE_BACKEND_ZXING`.
+  Accepts grayscale (1 byte/pixel) **or** raw RGBA (4 bytes/pixel); the firmware
+  always sends grayscale, so the RGB→luma conversion stays in JS on-device. RGBA
+  is only used by the WASM demo (no upload).
   Requires the C++ runtime (`CONFIG_CPP` + `GLIBCXX_LIBCPP` + `CPP_EXCEPTIONS`).
 - `zxing/cpp_psram_operators.cpp` — overrides global `operator new/delete` to route C++
   allocations to PSRAM (`shared_multi_heap`); compiled only with
   `CONFIG_RELIC_QR_DECODE_PSRAM`.
 - `zxing/Version.h` — static replacement for zxing-cpp's generated Version.h,
   hard-codes the QR-only flags (`ZXING_ENABLE_QRCODE=1`, others 0).
+
+The streaming interface takes a `bpp` (bytes-per-pixel) parameter:
+`qr_decode_begin(w, h, bpp)`. quirc only accepts `bpp=1`; ZXing accepts `1` or
+`4`. The HTTP handler always uses `bpp=1` (grayscale, chosen at compile time by
+the web page via the `__QR_DECODE_SERVER__` placeholder baked by
+`tools/embed-assets.py`); the `bpp=4` (RGBA) path is used only by the WASM demo.
+The WASM demo (`demo/src/qr_decode_wasm.c`) exposes
+both `wasm_qr_decode` (grayscale, bpp=1) and `wasm_qr_decode_rgba` (bpp=4, built
+on the streaming interface); `unsplit.js` prefers the RGBA entry point when
+present so the RGB→luma conversion happens in native ZXing rather than a JS
+per-pixel loop, and falls back to grayscale otherwise.
 
 ZXing-cpp is compiled as a **QR-only reader subset**: the individual
 `external/zxing-cpp/core/src/*.cpp` + `qrcode/*.cpp` + `libzueci/zueci.c` files

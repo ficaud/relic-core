@@ -5,7 +5,7 @@
 // These tests mirror the embedded device path (handler_qr_decode_stream in
 // src/access-point/http/src/http_handlers.c):
 //
-//   1. qr_decode_begin(w, h)      with w, h <= QR_DECODE_MAX_DIM
+//   1. qr_decode_begin(w, h, QR_DECODE_BPP_GRAY)   with w, h <= QR_DECODE_MAX_DIM
 //   2. qr_decode_buffer(ctx)      -> fill with raw grayscale (1 byte/pixel)
 //   3. qr_decode_commit(ctx, out, QR_DECODE_MAX_PAYLOAD, &grids)
 //   4. qr_decode_destroy(ctx)
@@ -100,7 +100,7 @@ int deviceDecode(const uint8_t *grid, std::string &payload, int &grids)
     int dim = 0;
     renderToGray(grid, kScale, kQuiet, gray, dim);
 
-    struct qr_decode_ctx *ctx = qr_decode_begin(dim, dim);
+    struct qr_decode_ctx *ctx = qr_decode_begin(dim, dim, QR_DECODE_BPP_GRAY);
     if (ctx == nullptr)
     {
         return -1;
@@ -212,7 +212,7 @@ TEST_F(QRDecodeTest, EmptyImageFindsNoGrid)
 {
     const int dim = QR_DECODE_MAX_DIM;
 
-    struct qr_decode_ctx *ctx = qr_decode_begin(dim, dim);
+    struct qr_decode_ctx *ctx = qr_decode_begin(dim, dim, QR_DECODE_BPP_GRAY);
     ASSERT_NE(ctx, nullptr);
 
     uint8_t *buf = qr_decode_buffer(ctx);
@@ -236,12 +236,22 @@ TEST_F(QRDecodeTest, EmptyImageFindsNoGrid)
 // the w/h validation in handler_qr_decode_stream().
 TEST_F(QRDecodeTest, BeginRejectsInvalidDimensions)
 {
-    EXPECT_EQ(qr_decode_begin(0, 10), nullptr);
-    EXPECT_EQ(qr_decode_begin(10, 0), nullptr);
-    EXPECT_EQ(qr_decode_begin(-1, 10), nullptr);
-    EXPECT_EQ(qr_decode_begin(10, -1), nullptr);
-    EXPECT_EQ(qr_decode_begin(QR_DECODE_MAX_DIM + 1, 10), nullptr);
-    EXPECT_EQ(qr_decode_begin(10, QR_DECODE_MAX_DIM + 1), nullptr);
+    EXPECT_EQ(qr_decode_begin(0, 10, QR_DECODE_BPP_GRAY), nullptr);
+    EXPECT_EQ(qr_decode_begin(10, 0, QR_DECODE_BPP_GRAY), nullptr);
+    EXPECT_EQ(qr_decode_begin(-1, 10, QR_DECODE_BPP_GRAY), nullptr);
+    EXPECT_EQ(qr_decode_begin(10, -1, QR_DECODE_BPP_GRAY), nullptr);
+    EXPECT_EQ(qr_decode_begin(QR_DECODE_MAX_DIM + 1, 10, QR_DECODE_BPP_GRAY), nullptr);
+    EXPECT_EQ(qr_decode_begin(10, QR_DECODE_MAX_DIM + 1, QR_DECODE_BPP_GRAY), nullptr);
+}
+
+// The quirc backend only accepts grayscale (QR_DECODE_BPP_GRAY); any other
+// bytes-per-pixel value must be rejected (RGBA is handled exclusively by the
+// ZXing backend).
+TEST_F(QRDecodeTest, BeginRejectsNonGrayscaleBpp)
+{
+    EXPECT_EQ(qr_decode_begin(10, 10, 0), nullptr);
+    EXPECT_EQ(qr_decode_begin(10, 10, QR_DECODE_BPP_RGBA), nullptr);
+    EXPECT_EQ(qr_decode_begin(10, 10, -1), nullptr);
 }
 
 TEST_F(QRDecodeTest, BufferNullCtxReturnsNull)
@@ -259,7 +269,7 @@ TEST_F(QRDecodeTest, CommitNullCtxFails)
 
 TEST_F(QRDecodeTest, CommitZeroOutSizeFails)
 {
-    struct qr_decode_ctx *ctx = qr_decode_begin(16, 16);
+    struct qr_decode_ctx *ctx = qr_decode_begin(16, 16, QR_DECODE_BPP_GRAY);
     ASSERT_NE(ctx, nullptr);
 
     char out[16];
