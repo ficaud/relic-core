@@ -4,8 +4,9 @@
 //
 // Implements the same `qr_decode_*` interface as the quirc backend
 // (quirc/qr_decode_quirc.c) so the HTTP handler can switch backends at build time without
-// change. The input is a raw grayscale (Lum) buffer, which ZXing accepts
-// directly (it does the RGB->luma conversion internally when given color).
+// change. The input is a raw grayscale (Lum) buffer (QR_DECODE_BPP_GRAY) or a
+// raw RGBA buffer (QR_DECODE_BPP_RGBA). ZXing accepts both directly and, for
+// color input, performs the RGB->luma conversion internally.
 
 #include "qr_decode.h"
 
@@ -14,6 +15,43 @@
 
 #include <cstring>
 #include <new>
+
+namespace
+{
+
+// Decode a single QR code from an image view, writing the payload (as a
+// null-terminated string) into @p out. Returns the payload length on success,
+// or -1 when no QR code decodes.
+int decode_image(const ZXing::ImageView &iv, char *out, size_t out_size)
+{
+    try
+    {
+        ZXing::ReaderOptions opts;
+        opts.setFormats(ZXing::BarcodeFormat::QRCode);
+
+        ZXing::Barcode barcode = ZXing::ReadBarcode(iv, opts);
+        if (!barcode.isValid())
+        {
+            return -1;
+        }
+
+        const std::vector<uint8_t> &bytes = barcode.bytes();
+        if (bytes.empty() || bytes.size() >= out_size)
+        {
+            return -1;
+        }
+
+        memcpy(out, bytes.data(), bytes.size());
+        out[bytes.size()] = '\0';
+        return static_cast<int>(bytes.size());
+    }
+    catch (...)
+    {
+        return -1;
+    }
+}
+
+} // namespace
 
 extern "C"
 {
@@ -26,11 +64,19 @@ struct qr_decode_ctx
     uint8_t *buffer;
     int width;
     int height;
+    int bpp;
 };
 
-struct qr_decode_ctx *qr_decode_begin(int width, int height)
+struct qr_decode_ctx *qr_decode_begin(int width, int height, int bpp)
 {
     if (width <= 0 || height <= 0 || width > QR_DECODE_MAX_DIM || height > QR_DECODE_MAX_DIM)
+    {
+        return nullptr;
+    }
+
+    // Only RGBA (QR_DECODE_BPP_RGBA bytes per pixel) and grayscale
+    // (QR_DECODE_BPP_GRAY byte per pixel) are supported.
+    if (bpp != QR_DECODE_BPP_GRAY && bpp != QR_DECODE_BPP_RGBA)
     {
         return nullptr;
     }
@@ -43,7 +89,8 @@ struct qr_decode_ctx *qr_decode_begin(int width, int height)
 
     ctx->width = width;
     ctx->height = height;
-    ctx->buffer = new (std::nothrow) uint8_t[(size_t)width * (size_t)height];
+    ctx->bpp = bpp;
+    ctx->buffer = new (std::nothrow) uint8_t[(size_t)width * (size_t)height * (size_t)bpp];
     if (ctx->buffer == nullptr)
     {
         delete ctx;
@@ -70,7 +117,8 @@ int qr_decode_commit(struct qr_decode_ctx *ctx, char *out, size_t out_size, int 
         return -1;
     }
 
-    int len = qr_decode_gray(ctx->buffer, ctx->width, ctx->height, out, out_size);
+    ZXing::ImageFormat fmt = ctx->bpp == QR_DECODE_BPP_RGBA ? ZXing::ImageFormat::RGBA : ZXing::ImageFormat::Lum;
+    int len = decode_image(ZXing::ImageView{ctx->buffer, ctx->width, ctx->height, fmt}, out, out_size);
     if (len < 0)
     {
         return -1;
@@ -109,32 +157,7 @@ int qr_decode_gray(const uint8_t *gray, int width, int height, char *out, size_t
         return -1;
     }
 
-    try
-    {
-        ZXing::ImageView iv{gray, width, height, ZXing::ImageFormat::Lum};
-        ZXing::ReaderOptions opts;
-        opts.setFormats(ZXing::BarcodeFormat::QRCode);
-
-        ZXing::Barcode barcode = ZXing::ReadBarcode(iv, opts);
-        if (!barcode.isValid())
-        {
-            return -1;
-        }
-
-        const std::vector<uint8_t> &bytes = barcode.bytes();
-        if (bytes.empty() || bytes.size() >= out_size)
-        {
-            return -1;
-        }
-
-        memcpy(out, bytes.data(), bytes.size());
-        out[bytes.size()] = '\0';
-        return (int)bytes.size();
-    }
-    catch (...)
-    {
-        return -1;
-    }
+    return decode_image(ZXing::ImageView{gray, width, height, ZXing::ImageFormat::Lum}, out, out_size);
 }
 
 } // extern "C"

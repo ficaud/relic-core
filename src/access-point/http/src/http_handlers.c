@@ -570,7 +570,7 @@ const char *handler_qr_decode_stream(const struct http_request *req, const char 
     LOG_INF("QR decode: body %ld bytes (%zu pixels)", content_len, pixels);
 
     /* Allocate quirc and stream the body straight into its image buffer. */
-    struct qr_decode_ctx *ctx = qr_decode_begin((int)w, (int)h);
+    struct qr_decode_ctx *ctx = qr_decode_begin((int)w, (int)h, QR_DECODE_BPP_GRAY);
     if (ctx == NULL)
     {
         ret = http_responses_list[HTTP_RESPONSE_INTERNAL_SERVER_ERROR];

@@ -89,8 +89,13 @@ struct qr_decode_ctx
     int height;
 };
 
-struct qr_decode_ctx *qr_decode_begin(int width, int height)
+struct qr_decode_ctx *qr_decode_begin(int width, int height, int bpp)
 {
+    if (bpp != QR_DECODE_BPP_GRAY)
+    {
+        return NULL;
+    }
+
     if (width <= 0 || height <= 0 || width > QR_DECODE_MAX_DIM || height > QR_DECODE_MAX_DIM)
     {
         return NULL;
