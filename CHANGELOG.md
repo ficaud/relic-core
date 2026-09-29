@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.2] - 2026-10-03
+
+### added
+- `Makefile` : add a Makefile to build the project with west or perform the tests and other tasks required for the development
+
+### changed
+- `README.md` : update librairies list to include zxing-cpp
+- `unsplit.html` : mention that phone is required to scan QR code in live mode (using the phone camera)
+- `.github` : add code of conduct, contributing and security policy files and move docker-compose.yml to ease project's root's readability
+
+### fixed
+- `project` : Whole project typos and inconsistencies fixes (made thanks to AI)
+
+### Removed
+- `.devcontainer` : make the devcontainer minimal and apply a personal config overlay for devuser additional tools (this is to make the project's repo cleaner)
+
 ## [1.7.1] - 2026-09-28
 
 ### added
