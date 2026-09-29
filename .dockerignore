@@ -9,6 +9,7 @@
 # Git
 .git
 .gitignore
+.github
 
 # Build artifacts
 build/
@@ -44,7 +45,6 @@ tests/
 
 # Documentation (only doc/img/relic-logo_icone.svg is needed, copied explicitly)
 doc/commands.md
-CONTRIBUTING.md
 doc/img/split.PNG
 doc/img/unsplit.PNG
 doc/img/success_flashing.PNG

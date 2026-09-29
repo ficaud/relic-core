@@ -6,12 +6,12 @@
 # nginx container. Works on any platform: Linux, macOS, Windows, and
 # Raspberry Pi (arm64 / arm/v7).
 #
-# Usage:
-#   docker compose up -d
+# Usage (from the repository root):
+#   docker compose -f docker/docker-compose.yml up -d
 #   # then open http://localhost:8080  (or https://localhost:8443 for camera access)
 #
 # To use different ports, override with:
-#   RELIC_PORT=9090 RELIC_HTTPS_PORT=9443 docker compose up -d
+#   RELIC_PORT=9090 RELIC_HTTPS_PORT=9443 docker compose -f docker/docker-compose.yml up -d
 #
 # To identify which version of Relic Core is running, open:
 #   http://localhost:8080/version.json
@@ -21,7 +21,7 @@
 services:
   relic-core:
     build:
-      context: .
+      context: ..
       dockerfile: docker/Dockerfile
       args:
         VERSION: ${RELIC_VERSION:-dev}
