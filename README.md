@@ -97,7 +97,7 @@ Please refer to the [relic-core docker doc](doc/docker.md) for more information.
 
 ## Contribution
 
-In [CONTRIBUTING](CONTRIBUTING.md), you'll find all the required information to contribute to the project. Please also read the [code of conduct](CODE_OF_CONDUCT.md) and the [vulnerability](SECURITY.md) policy.
+In [CONTRIBUTING](.github/CONTRIBUTING.md), you'll find all the required information to contribute to the project. Please also read the [code of conduct](.github/CODE_OF_CONDUCT.md) and the [vulnerability](.github/SECURITY.md) policy.
 
 ## License
 

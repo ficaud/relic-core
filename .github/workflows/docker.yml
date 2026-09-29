@@ -17,7 +17,6 @@ on:
     paths:
       - '.github/workflows/docker.yml'
       - 'docker/**'
-      - 'docker-compose.yml'
       - 'demo/**'
       - 'src/access-point/**'
       - 'src/sss/**'

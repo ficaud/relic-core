@@ -96,4 +96,5 @@ docker inspect relic-core --format '{{index .Config.Labels "org.opencontainers.i
 ```
 
 To build the image locally instead of pulling it, use the
-`docker-co.yml` at the repository root.
+`docker/docker-compose.yml` file (run `docker compose -f docker/docker-compose.yml build`
+from the repository root).
