@@ -162,6 +162,21 @@ The root `CMakeLists.txt` dispatches on `BUILD_TESTS`:
    ctest --test-dir build/tests
    ```
 
+The root `Makefile` wraps these commands as convenience targets for developers
+(CLI, Neovim/overseer, devcontainer). Boards map to `build-*` directories:
+
+| Target | Board | Build dir |
+|---|---|---|
+| `make build` / `make build-esp32s3` | `esp32s3_devkitc/esp32s3/procpu` | `build-esp32s3` |
+| `make build-wroom` | `doit_esp32_devkit_v1/esp32/procpu` | `build-esp32wroom` |
+| `make build-xiao` | `xiao_esp32s3/esp32s3/procpu` | `build-xiao` |
+
+Other targets: `pristine` (`west build -p always`), `test` (native unit tests),
+`flash-jtag`, `wasm`, `clean`. `BOARD=esp32s3|wroom|xiao` selects the board for
+`build`/`pristine`; `make build` also refreshes the root `compile_commands.json`
+symlink for clangd. There is no `init` target: the devcontainer's
+`postCreateCommand` already runs `west update` and fetches the ESP32 blobs.
+
 Key details:
 - Firmware sources are listed explicitly in `target_sources(app PRIVATE ...)`.
 - Zephyr modules are listed explicitly via `ZEPHYR_MODULES` to avoid the module
@@ -254,8 +269,9 @@ ctest --test-dir build/tests --verbose      # verbose
   at build time (`/etc/nginx/certs/`). QR scanning uses the **photo/file-picker**
   flow (no live camera), identical to the ESP32 captive portal.
 - **Asset embedding**: `tools/embed-assets.py` → `page_captive.h` (auto-run by build).
-- **clangd**: `.clangd` points to the root `compile_commands.json` symlink, which
-  should be refreshed to the latest board build.
+- **clangd**: `.clangd` points to the root `compile_commands.json` symlink; `make
+  build` refreshes it to the last board built. `.clangd` uses paths relative to
+  the repo root.
 
 ## Gotchas
 

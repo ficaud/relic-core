@@ -2,6 +2,12 @@
 .DS_Store
 ._*
 
+### Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
 ### Build artifacts (west / CMake / Zephyr)
 build/
 build-*/
