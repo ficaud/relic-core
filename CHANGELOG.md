@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.3] - 2026-10-31
+
+### added
+- `test_qr_decide_zxing.cpp`: zxing cpp qr decode unitary tests
+
+### changed
+- `zephyr` : update to version 4.5.0
+
+### fixed
+- `wifi_mgr` : zero-initialize the AP connect request so the uninitialized `sae_password_length` no longer makes `NET_REQUEST_WIFI_AP_ENABLE` fail with `-EINVAL` on Zephyr 4.5.0
+- `boards/doit_esp32_devkit_v1_esp32_procpu.conf` : `dram1_0_seg` (93 KB, where `.dram0.noinit` spills) overflowed by ~5.7 KB with Zephyr 4.5.0.
+
 ## [1.7.2] - 2026-10-03
 
 ### added
