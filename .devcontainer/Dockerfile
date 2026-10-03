@@ -1,8 +1,13 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 # Devcontainer for Zephyr RTOS development on ESP32-S3-DevKitC-1
-# Includes: Zephyr SDK (xtensa-esp32s3 toolchain), west, esptool,
-#           Emscripten SDK (WASM demo), clang-format, clangd, opencode
+# Includes only what is required to build and test the firmware:
+#   Zephyr SDK (xtensa-esp32s3 toolchain), west, esptool,
+#   Emscripten SDK (WASM demo), clang-format, clangd.
+#
+# Personal developer tools (nvim, lazygit, opencode, zsh, Oh My Zsh, ...)
+# are intentionally NOT installed here; they live in a private overlay
+# repository and are baked into a personal image built on top of this one.
 
 FROM ubuntu:24.04
 
@@ -42,26 +47,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     lsb-release \
     sudo \
     unzip \
-    doxygen \
     clang-format \
     clangd \
-    libsdl2-dev \
     libmagic1 \
     lz4 \
     lzop \
     zstd \
-    net-tools \
-    openssh-client \
-    screen \
-    socat \
     libgtest-dev \
     libgmock-dev \
-    ripgrep \
-    zsh \
-    lsof \
-    fd-find \
-    tmux \
-    xclip \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -186,173 +179,37 @@ RUN echo "Cloning Zephyr RTOS ${ZEPHYR_VERSION}..." \
     && echo "Zephyr RTOS ${ZEPHYR_VERSION} installed"
 
 # ------------------------------------------------------------------
-# 6. Neovim, Lazygit and OpenCode (optional developer tools)
-# ------------------------------------------------------------------
-# These downloads are developer conveniences, not required to build or
-# test the firmware. A transient GitHub download failure must NOT abort
-# the CI docker build, so each tool is installed in an isolated step that
-# tolerates failure (logs a warning and continues).
-ENV NVIM_VERSION=0.11.2
-ENV LAZYGIT_VERSION=0.45.2
-
-# Map the build architecture to the GitHub release asset suffix.
-RUN ARCH="$(uname -m)" \
-    && case "${ARCH}" in \
-        x86_64) N_ARCH="x86_64" ;; \
-        aarch64|arm64) N_ARCH="arm64" ;; \
-        *) echo "Unsupported architecture: ${ARCH}" && exit 1 ;; \
-    esac \
-    && echo "${N_ARCH}" > /tmp/n_arch.txt
-
-# 6a. Neovim (best-effort; failure is non-fatal for CI)
-RUN N_ARCH="$(cat /tmp/n_arch.txt)" \
-    && NVIM_URL="https://github.com/neovim/neovim/releases/download/v${NVIM_VERSION}/nvim-linux-${N_ARCH}.tar.gz" \
-    && echo "Downloading Neovim ${NVIM_VERSION} for ${N_ARCH}..." \
-    && if wget -q --show-progress --tries=3 --timeout=60 -O /tmp/nvim.tar.gz "${NVIM_URL}"; then \
-         tar -xzf /tmp/nvim.tar.gz -C /opt/ \
-         && ln -sf /opt/nvim-linux-${N_ARCH}/bin/nvim /usr/local/bin/nvim \
-         && rm /tmp/nvim.tar.gz \
-         && nvim --version | head -1 \
-         && echo "Neovim installed" \
-         ; \
-       else \
-         echo "WARNING: Neovim download failed; continuing without it" \
-         ; \
-       fi
-
-# 6b. Lazygit (best-effort; failure is non-fatal for CI)
-RUN N_ARCH="$(cat /tmp/n_arch.txt)" \
-    && LAZYGIT_URL="https://github.com/jesseduffield/lazygit/releases/download/v${LAZYGIT_VERSION}/lazygit_${LAZYGIT_VERSION}_Linux_${N_ARCH}.tar.gz" \
-    && echo "Downloading Lazygit ${LAZYGIT_VERSION} for ${N_ARCH}..." \
-    && if wget -q --show-progress --tries=3 --timeout=60 -O /tmp/lazygit.tar.gz "${LAZYGIT_URL}"; then \
-         tar -xzf /tmp/lazygit.tar.gz -C /usr/local/bin/ lazygit \
-         && rm /tmp/lazygit.tar.gz \
-         && lazygit --version \
-         && echo "Lazygit installed" \
-         ; \
-       else \
-         echo "WARNING: Lazygit download failed; continuing without it" \
-         ; \
-       fi \
-    && rm -f /tmp/n_arch.txt
-
-# 6c. OpenCode (best-effort; failure is non-fatal for CI)
-# AI coding agent for the terminal. The official installer only writes to
-# $HOME/.opencode/bin, so we run it inside a temporary home and copy the
-# binary to /usr/local/bin to put it on PATH for every user.
-RUN OPENCODE_HOME="$(mktemp -d)" \
-    && echo "Installing OpenCode..." \
-    && if HOME="${OPENCODE_HOME}" bash -c "curl -fsSL https://opencode.ai/install | bash"; then \
-         install -m 0755 "${OPENCODE_HOME}/.opencode/bin/opencode" /usr/local/bin/opencode \
-         && chown ubuntu:ubuntu /usr/local/bin/opencode \
-         && opencode --version \
-         && echo "OpenCode installed"; \
-       else \
-         echo "WARNING: OpenCode install failed; continuing without it"; \
-       fi \
-    && rm -rf "${OPENCODE_HOME}"
-
-# ------------------------------------------------------------------
-# 7. Environment setup
+# 6. Environment setup
 # ------------------------------------------------------------------
 ENV ZEPHYR_TOOLCHAIN_VARIANT=zephyr
 # Zephyr RTOS was pre-downloaded into the image at /opt/zephyr (v4.4.2).
 ENV ZEPHYR_BASE=/opt/zephyr
 
 # ------------------------------------------------------------------
-# 8. Non-root user
+# 7. Non-root user
 # ------------------------------------------------------------------
-ARG USERNAME=vscode
+ARG USERNAME=devuser
 ARG USER_UID=1000
 ARG USER_GID=1000
 
 # Create group first, then user, then assign sudo.
 # The base image (ubuntu:24.04) already ships a user/group named "ubuntu" with
-# UID/GID 1000, so groupadd fails silently there. Fall back to `-o` (allow a
-# duplicate GID) so the "vscode" group always exists for the entrypoint to
-# adjust at runtime.
-RUN ( groupadd --gid "${USER_GID}" "${USERNAME}" 2>/dev/null || \
-      groupadd -o --gid "${USER_GID}" "${USERNAME}" 2>/dev/null || true ); \
-    if ! id -u "${USERNAME}" &>/dev/null; then \
-        if getent passwd "${USER_UID}" &>/dev/null; then \
-            useradd --uid "${USER_UID}" --gid "${USER_GID}" -m "${USERNAME}" -o 2>/dev/null || true; \
-        else \
-            useradd --uid "${USER_UID}" --gid "${USER_GID}" -m "${USERNAME}"; \
-        fi; \
-    fi; \
+# UID/GID 1000. Remove it first so "devuser" is the unique UID/GID 1000 owner:
+# otherwise getpwuid(1000) resolves to "ubuntu" (it comes first in /etc/passwd)
+# and the runtime user gets HOME=/home/ubuntu instead of /home/devuser, which
+# breaks the personal overlay (zsh/oh-my-zsh, nvim, gitconfig live in /home/devuser).
+RUN userdel ubuntu 2>/dev/null || true; \
+    groupdel ubuntu 2>/dev/null || true; \
+    groupadd --gid "${USER_GID}" "${USERNAME}" 2>/dev/null || true; \
+    useradd --uid "${USER_UID}" --gid "${USER_GID}" -m "${USERNAME}"; \
     echo "${USERNAME} ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/"${USERNAME}" && \
     chmod 0440 /etc/sudoers.d/"${USERNAME}" && \
     # Safety net: ALL sudo-group members get passwordless sudo. This handles
     # cases where the devcontainer runtime creates a different user at runtime
-    # (e.g. "ubuntu") with the same UID as USERNAME due to overrideCommand
-    # bypassing the entrypoint.
+    # with the same UID as USERNAME due to overrideCommand bypassing the
+    # entrypoint.
     echo "%sudo ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/sudogroup-nopasswd && \
     chmod 0440 /etc/sudoers.d/sudogroup-nopasswd
-
-# ------------------------------------------------------------------
-# 9. LazyVim (Neovim configuration) — optional developer tooling
-# ------------------------------------------------------------------
-# Best-effort clone; a transient GitHub failure must not abort the CI build.
-RUN mkdir -p /home/${USERNAME}/.config \
-    && if git clone --depth 1 https://github.com/LazyVim/starter /home/${USERNAME}/.config/nvim; then \
-         rm -rf /home/${USERNAME}/.config/nvim/.git \
-         && echo "LazyVim installed"; \
-       else \
-         echo "WARNING: LazyVim clone failed; continuing without it"; \
-       fi \
-    && chown -R ${USERNAME}:${USER_GID} /home/${USERNAME}/.config
-
-# ------------------------------------------------------------------
-# 10. Oh My Zsh + plugins (used by the host .zshrc mounted from the MacBook)
-# ------------------------------------------------------------------
-# The mounted .zshrc points ZSH="$HOME/.oh-my-zsh" and loads the plugins
-# git, zsh-autosuggestions and zsh-syntax-highlighting.  We install those
-# here (into /home/${USERNAME}) so the container is self-contained; the
-# entrypoint bridges them to the effective runtime user.
-# Oh My Zsh itself is CRITICAL: without oh-my-zsh.sh the mounted .zshrc
-# fails to source and zsh is unusable.  Clone it with retries and abort the
-# build if it never succeeds (a transient GitHub failure must not silently
-# produce a broken shell).
-# Clone into a temporary dir and move into place so the target never
-# pre-exists (git refuses to clone into a non-empty directory).
-RUN clone_ohmyzsh() { \
-         for i in 1 2 3 4 5; do \
-           rm -rf /tmp/oh-my-zsh; \
-           if git clone --depth 1 https://github.com/ohmyzsh/ohmyzsh.git /tmp/oh-my-zsh; then \
-             return 0; \
-           fi; \
-           echo "Oh My Zsh clone attempt ${i} failed; retrying in 5s..."; \
-           sleep 5; \
-         done; \
-         return 1; \
-       }; \
-       if clone_ohmyzsh; then \
-         rm -rf /home/${USERNAME}/.oh-my-zsh \
-         && mv /tmp/oh-my-zsh /home/${USERNAME}/.oh-my-zsh \
-         && rm -rf /home/${USERNAME}/.oh-my-zsh/.git \
-         && echo "Oh My Zsh installed"; \
-       else \
-         echo "ERROR: Oh My Zsh clone failed after retries" >&2; \
-         exit 1; \
-       fi \
-    && test -f /home/${USERNAME}/.oh-my-zsh/oh-my-zsh.sh \
-    && mkdir -p /home/${USERNAME}/.oh-my-zsh/custom/plugins \
-    && if git clone --depth 1 https://github.com/zsh-users/zsh-autosuggestions /home/${USERNAME}/.oh-my-zsh/custom/plugins/zsh-autosuggestions; then \
-         echo "zsh-autosuggestions installed"; \
-       else \
-         echo "WARNING: zsh-autosuggestions clone failed; continuing without it"; \
-       fi \
-    && if git clone --depth 1 https://github.com/zsh-users/zsh-syntax-highlighting /home/${USERNAME}/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting; then \
-         echo "zsh-syntax-highlighting installed"; \
-       else \
-         echo "WARNING: zsh-syntax-highlighting clone failed; continuing without it"; \
-       fi \
-    && chown -R ${USERNAME}:${USER_GID} /home/${USERNAME}/.oh-my-zsh
-
-# ------------------------------------------------------------------
-# 11. Make zsh the default shell for the container user
-# ------------------------------------------------------------------
-RUN chsh -s /usr/bin/zsh ${USERNAME}
 
 # Entrypoint — adjusts UID/GID at runtime for volume-mounted workspaces.
 # Must run as root so it can call usermod/groupmod/chown, then

@@ -16,8 +16,10 @@ header:
 
 ## Environment Setup
 
-The project ships a dev container that provides a ready-to-use build
-environment.
+The project ships a **minimal** dev container that provides a ready-to-use
+build environment (Zephyr SDK, west, Emscripten, clangd, clang-format). It
+does **not** include personal developer tools (Neovim, zsh, etc.); those come
+from an optional private overlay — see `doc/commands.md`.
 
 1. **Build and enter the dev container**
 

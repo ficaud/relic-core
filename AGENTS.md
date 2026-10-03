@@ -251,9 +251,29 @@ ctest --test-dir build/tests --verbose      # verbose
 
 ## Dev Environment & Tools
 
-- **Dev container**: `.devcontainer/` (Zephyr SDK at `/opt/zephyr-sdk`,
-  `ZEPHYR_BASE=/workspaces/relic-core/zephyr`). `devcontainer up` /
-  `devcontainer exec --workspace-folder . zsh`.
+- **Dev container**: `.devcontainer/` ships a **minimal**, build-only image
+  (Zephyr SDK at `/opt/zephyr-sdk`, `ZEPHYR_BASE=/workspaces/relic-core/zephyr`).
+  `devcontainer up --workspace-folder .` /
+  `devcontainer exec --workspace-folder . bash`. Personal developer tools
+  (nvim, lazygit, zsh + Oh-My-Zsh, opencode, ...) are **not** baked into the
+  image; they come from the git-ignored `my-env/` directory (a private overlay
+  repo) driven by `my-env/relic-up.sh` / `my-env/relic-down.sh` (see
+  `doc/commands.md`).
+- **Overlay replaces the base config**: `relic-up.sh` starts the container with
+  `devcontainer up --override-config my-env/devcontainer.override.json`, and
+  `--override-config` **replaces** (does not merge) `.devcontainer/devcontainer.json`.
+  The override must therefore replicate every base setting it relies on
+  (`overrideCommand: false`, `remoteUser: devuser`, `updateRemoteUserUID: false`,
+  `postCreateCommand`, the Zephyr `containerEnv`, and the `8000` port). Dropping
+  any of these silently changes runtime behaviour (e.g. no `entrypoint.sh`, so
+  the container runs as root and no `west update` runs).
+- **SSH agent + UID on macOS**: the overlay forwards the host SSH agent with
+  `runArgs: ["--privileged", "-v", "${localEnv:SSH_AUTH_SOCK}:/tmp/ssh-agent.socket"]`
+  and `SSH_AUTH_SOCK=/tmp/ssh-agent.socket`. Docker Desktop checks socket access
+  against the host UID, and the workspace mount reports `root:root`, so
+  `relic-up.sh` exports `RELIC_HOST_UID/GID` and `entrypoint.sh` uses them to
+  align the container user's UID/GID with the host (else `ssh-add -l` fails with
+  "Permission denied").
 - **Environment awareness**: the agent must determine whether it is running
   inside the dev container (e.g. `ZEPHYR_BASE` points to
   `/workspaces/relic-core/zephyr`, `/opt/zephyr-sdk` exists, `west`/`cmake` are
@@ -294,3 +314,10 @@ ctest --test-dir build/tests --verbose      # verbose
   validate with a `try/throw` smoke test on a new toolchain/revision.
 - **Versioning**: README states Zephyr v4.4.2; do not trust older docs that say
   v4.4.1.
+- **Nested west repos + dubious ownership**: west clones repos at arbitrary
+  depths under the workspace (`zephyr/`, `bootloader/mcuboot/`, `modules/…`,
+  `my-env/`). On macOS Docker Desktop the workspace mount reports `root:root`,
+  so git rejects every repo as "dubious ownership". The personal
+  `my-env/Dockerfile` therefore marks **all** repos safe
+  (`git config --system --add safe.directory '*'`) — a single top-level entry
+  (`/workspaces/relic-core`) is not enough.

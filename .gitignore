@@ -76,3 +76,4 @@ tests/Testing/Temporary
 /demo/scripts
 /.private/
 /.ignore
+/my-env/
