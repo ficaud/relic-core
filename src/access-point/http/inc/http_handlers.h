@@ -50,7 +50,6 @@ const char *handler_divide(const struct http_request *req);
  * @brief Reconstruct handler — receives shares and reconstructs the secret.
  *
  * Expects query parameters:
- *   s   — number of shares
  *   d   — comma-separated hex data (e.g. "5a02,77d0,79b7")
  *   x   — comma-separated x values  (e.g. "1,2,3")
  *
@@ -96,7 +95,7 @@ const char *handler_qr_share_svg(const struct http_request *req);
  * and whose body holds exactly w*h raw grayscale bytes
  * (Content-Type: application/octet-stream).
  *
- * The body is streamed directly into quirc's image buffer (no intermediate
+ * The body is streamed directly into the decoder's image buffer (no intermediate
  * copy) while it is still arriving on the socket, so it must be invoked from
  * the HTTP thread that owns the client connection.
  *

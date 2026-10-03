@@ -49,7 +49,7 @@ extern "C"
 /* Worst-case number of bytes needed for one QR Code (version 40) = 3918. */
 #define qrcodegen_BUFFER_LEN_MAX qrcodegen_BUFFER_LEN_FOR_VERSION(qrcodegen_VERSION_MAX)
 
-/* mode alphernumeric if fixed because it is the only mode supported */
+/* mode alphanumeric is fixed because it is the only mode supported */
 #define MODE_ALPHANUMERIC 0x2
 /* ===========================================================================
  * Public functions

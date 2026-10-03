@@ -76,7 +76,7 @@ int wifi_mgr_init(void)
     // Delay to allow the Wi-Fi driver to initialize
     k_sleep(K_SECONDS(5));
 
-    // Semaphor initialization for AP ready signal
+    // Semaphore initialization for AP ready signal
     ret = k_sem_init(&ap_ready_sem, 0, 1);
     if (ret)
     {
@@ -160,7 +160,7 @@ static void wifi_event_handler(struct net_mgmt_event_callback *cb, uint64_t mgmt
         case NET_EVENT_WIFI_AP_STA_DISCONNECTED:
         {
             struct wifi_ap_sta_info *sta = (struct wifi_ap_sta_info *)cb->info;
-            LOG_INF("station: " MACSTR " leave",
+            LOG_INF("station: " MACSTR " left",
                     sta->mac[0],
                     sta->mac[1],
                     sta->mac[2],

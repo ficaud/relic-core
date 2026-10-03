@@ -3,7 +3,8 @@
 Relic Core WASM demo dev server.
 
 Serves the captive-portal assets (src/access-point/assets/) as the live web
-root, and maps the WASM modules (sss.js/sss.wasm/qr.js/qr.wasm) from
+root, and maps the WASM modules (sss.js/sss.wasm, qr.js/qr.wasm,
+compression.js/compression.wasm, qr_decode.js/qr_decode.wasm) from
 demo/scripts/.  This way, edits made in src/access-point/assets/ are reflected
 immediately without having to regenerate the pages/ directory.
 
@@ -33,8 +34,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         path = path.split('?', 1)[0].split('#', 1)[0]
         parts = [p for p in path.lstrip('/').split('/') if p]
 
-        # Map the WASM demo modules (sss.js/sss.wasm/qr.js/qr.wasm/
-        # compression.js/compression.wasm/qr_decode.js/qr_decode.wasm) from
+        # Map the WASM demo modules (sss.js/sss.wasm, qr.js/qr.wasm,
+        # compression.js/compression.wasm, qr_decode.js/qr_decode.wasm) from
         # demo/scripts/ into the /scripts/ namespace.
         if parts[:1] == ['scripts'] and parts[-1] in ('sss.js', 'sss.wasm',
                                                       'qr.js', 'qr.wasm',

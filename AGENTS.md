@@ -35,12 +35,13 @@ seed phrases, etc.) in a secure, offline way. One specific particularity of Reli
 │   │   └── assets/         # HTML/CSS/JS assets → embedded as page_captive.h
 │   ├── sss/                # Shamir's Secret Sharing over GF(256)
 │   ├── compression/        # Share size reduction codecs
-│   │   ├── base32.c/h      # RFC 4648 base32 (unpadded)
-│   │   ├── share_base32.c/h# "x:hex" <-> "x:base32" share conversion
-│   │   ├── bip39.c/h       # BIP-39 seed phrase (de)compression (+ passphrase)
-│   │   ├── bip39_words.c/h # BIP-39 English wordlist (generated)
-│   │   ├── slip39.c/h      # SLIP-39 mnemonic (de)compression (+ passphrase)
-│   │   └── slip39_words.c/h# SLIP-39 English wordlist (generated)
+│   │   ├── encoding/       # base32 + share text <-> base32 conversion
+│   │   │   ├── base32.c/h  # RFC 4648 base32 (unpadded)
+│   │   │   └── share_base32.c/h # "x:hex" <-> "x:base32" share conversion
+│   │   └── word_list/      # BIP-39 / SLIP-39 word-list codec + word lists
+│   │       ├── wl_codec.c/h     # generic word-list codec (BIP-39 / SLIP-39)
+│   │       ├── bip39_words.c/h  # BIP-39 English wordlist (generated)
+│   │       └── slip39_words.c/h # SLIP-39 English wordlist (generated)
 │   ├── qrcode/             # QR encode (Nayuki) + decode (quirc / ZXing-cpp, S3-only)
 │   │   ├── quirc/          # quirc backend (qr_decode_quirc.c)
 │   │   └── zxing/          # ZXing-cpp backend + PSRAM operators + static Version.h
@@ -75,11 +76,10 @@ seed phrases, etc.) in a secure, offline way. One specific particularity of Reli
 - `base32` — RFC 4648 codec, uppercase, **no '=' padding**; case-insensitive decode.
 - `share_base32` — converts the canonical `x:hex...` share form to a compact
   `x:base32...` QR payload and back. Buffer sizing via `SHARE_B32_BUF_SIZE`.
-- `bip39` — replaces seed-phrase words with their 2-byte little-endian indices;
-  `bip39_compress_passphrase` handles an optional `;`-separated passphrase.
-- `slip39` — replaces SLIP-39 mnemonic words with their 2-byte little-endian
-  indices (1024-word list, up to 33 words); mirrors the `bip39` codec with a
-  `slip39_compress_passphrase` variant.
+- `wl_codec` — generic word-list codec (`wl_codec.h`). Replaces seed-phrase words
+  with their 2-byte little-endian indices, selecting a word list at runtime
+  (`WORD_LIST_BIP39` / `WORD_LIST_SLIP39`); `wl_codec_compress_passphrase` handles
+  an optional `;`-separated passphrase.
 
 ### `src/qrcode/`
 - `qr_encode.c` — Nayuki QR-Code-generator (reduced build: alphanumeric, ECC LOW).
