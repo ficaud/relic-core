@@ -216,7 +216,7 @@ implementation `external/sss` (dsprenkels/sss) cross-validates the SSS output.
 
 Test executables (each registered with `ctest`):
 `sss_test`, `base32_test`, `bip39_test`, `slip39_test`, `share_base32_test`,
-`qrcode_test`, `svg_test`, `qr_decode_test`.
+`qrcode_test`, `svg_test`, `qr_decode_test`, `qr_decode_zxing_test`.
 
 ```bash
 ctest --test-dir build/tests                # summary
@@ -226,8 +226,14 @@ ctest --test-dir build/tests --verbose      # verbose
 
 - `mockup/sys_rand_stub.c` stubs Zephyr's `sys_rand_get()`.
 - `stubs/zephyr/random/random.h` provides the fake Zephyr header.
+- `qr_decode_test` covers the quirc backend; `qr_decode_zxing_test` covers the
+  ZXing-cpp backend (including the RGBA path) by mirroring the quirc test cases
+  against the same golden QR grids.
 - Coverage: `cmake --preset tests -DENABLE_COVERAGE=ON` then
-  `cmake --build build/tests --target coverage` (uses gcovr, GCC only).
+  `cmake --build build/tests --target coverage` (uses gcovr, GCC only). The
+  report covers `src/` and excludes the generated word lists
+  (`bip39_words.c`/`slip39_words.c`) and `cpp_psram_operators.cpp` (firmware-only,
+  links against Zephyr PSRAM APIs and cannot run natively).
 
 ## Coding Style
 

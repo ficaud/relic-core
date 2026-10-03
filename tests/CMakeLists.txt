@@ -37,6 +37,7 @@ set(QRCODE_SRC_DIR      ${CMAKE_CURRENT_SOURCE_DIR}/../src/qrcode)
 set(SVG_SRC_DIR         ${CMAKE_CURRENT_SOURCE_DIR}/../src/svg)
 set(COMPRESSION_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../src/compression)
 set(QUIRC_DIR           ${CMAKE_CURRENT_SOURCE_DIR}/../external/quirc/lib)
+set(ZXING_DIR           ${CMAKE_CURRENT_SOURCE_DIR}/../external/zxing-cpp/core/src)
 
 # ---------------------------------------------------------------------------
 # sss_test — Shamir + QR Code tests (combined executable)
@@ -178,7 +179,7 @@ target_link_libraries(svg_test PRIVATE
 # ---------------------------------------------------------------------------
 add_executable(qr_decode_test
     main.cpp
-    test_qr_decode.cpp
+    test_qr_decode_quirc.cpp
     ${QRCODE_SRC_DIR}/quirc/qr_decode_quirc.c   # Decoder wrapper (our code)
     ${QUIRC_DIR}/quirc.c                      # quirc core
     ${QUIRC_DIR}/decode.c
@@ -195,6 +196,76 @@ target_link_libraries(qr_decode_test PRIVATE
     GTest::GTest
     GTest::Main
     m                                            # quirc's identify.c uses sqrt()
+)
+
+# ---------------------------------------------------------------------------
+# qr_decode_zxing_test — QR Code decoder (zxing/qr_decode_zxing.cpp + ZXing-cpp)
+# tests. Mirrors the quirc qr_decode_test target but links the ZXing-cpp QR-only
+# reader subset (same source list as the firmware build in CMakeLists.txt).
+# ---------------------------------------------------------------------------
+add_executable(qr_decode_zxing_test
+    main.cpp
+    test_qr_decode_zxing.cpp
+    ${QRCODE_SRC_DIR}/zxing/qr_decode_zxing.cpp  # Decoder wrapper (our code)
+    ${ZXING_DIR}/Barcode.cpp
+    ${ZXING_DIR}/BarcodeFormat.cpp
+    ${ZXING_DIR}/BitMatrix.cpp
+    ${ZXING_DIR}/CharacterSet.cpp
+    ${ZXING_DIR}/CreateBarcode.cpp
+    ${ZXING_DIR}/Content.cpp
+    ${ZXING_DIR}/ECI.cpp
+    ${ZXING_DIR}/Error.cpp
+    ${ZXING_DIR}/GTIN.cpp
+    ${ZXING_DIR}/JSON.cpp
+    ${ZXING_DIR}/ReadBarcode.cpp
+    ${ZXING_DIR}/ReedSolomon.cpp
+    ${ZXING_DIR}/Utf.cpp
+    ${ZXING_DIR}/WriteBarcode.cpp
+    ${ZXING_DIR}/ZXingCpp.cpp
+    ${ZXING_DIR}/BitArray.cpp
+    ${ZXING_DIR}/HRI.cpp
+    ${ZXING_DIR}/BinaryBitmap.cpp
+    ${ZXING_DIR}/BitSource.cpp
+    ${ZXING_DIR}/ConcentricFinder.cpp
+    ${ZXING_DIR}/GlobalHistogramBinarizer.cpp
+    ${ZXING_DIR}/GridSampler.cpp
+    ${ZXING_DIR}/HybridBinarizer.cpp
+    ${ZXING_DIR}/LocalGrid.cpp
+    ${ZXING_DIR}/MultiFormatReader.cpp
+    ${ZXING_DIR}/PerspectiveTransform.cpp
+    ${ZXING_DIR}/ResultPoint.cpp
+    ${ZXING_DIR}/TextDecoder.cpp
+    ${ZXING_DIR}/WhiteRectDetector.cpp
+    ${ZXING_DIR}/qrcode/QRCodecMode.cpp
+    ${ZXING_DIR}/qrcode/QRErrorCorrectionLevel.cpp
+    ${ZXING_DIR}/qrcode/QRVersion.cpp
+    ${ZXING_DIR}/qrcode/QRBitMatrixParser.cpp
+    ${ZXING_DIR}/qrcode/QRDataBlock.cpp
+    ${ZXING_DIR}/qrcode/QRDecoder.cpp
+    ${ZXING_DIR}/qrcode/QRDetector.cpp
+    ${ZXING_DIR}/qrcode/QRFormatInformation.cpp
+    ${ZXING_DIR}/qrcode/QRReader.cpp
+    ${ZXING_DIR}/libzueci/zueci.c
+)
+
+target_include_directories(qr_decode_zxing_test PRIVATE
+    ${QRCODE_SRC_DIR}                            # for qr_decode.h
+    ${QRCODE_SRC_DIR}/zxing                      # for the static Version.h
+    ${ZXING_DIR}                                 # for ReadBarcode.h etc.
+)
+
+target_compile_definitions(qr_decode_zxing_test PRIVATE
+    ZXING_INTERNAL
+)
+
+set_target_properties(qr_decode_zxing_test PROPERTIES
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED ON
+)
+
+target_link_libraries(qr_decode_zxing_test PRIVATE
+    GTest::GTest
+    GTest::Main
 )
 
 # ---------------------------------------------------------------------------
@@ -220,6 +291,9 @@ add_test(NAME svg_test COMMAND svg_test)
 # Launch the QR code decoder unit tests (QRDecodeTest suite).
 add_test(NAME qr_decode_test COMMAND qr_decode_test)
 
+# Launch the ZXing-cpp QR code decoder unit tests (QRDecodeZxingTest suite).
+add_test(NAME qr_decode_zxing_test COMMAND qr_decode_zxing_test)
+
 # ---------------------------------------------------------------------------
 # Coverage report — run the tests then generate a gcovr HTML/XML report.
 #   cmake --build <build-dir> --target coverage
@@ -234,7 +308,7 @@ if(ENABLE_COVERAGE)
     get_filename_component(COVERAGE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
 
     add_custom_target(coverage
-        DEPENDS sss_test base32_test wl_codec_test share_base32_test qrcode_test svg_test qr_decode_test
+        DEPENDS sss_test base32_test wl_codec_test share_base32_test qrcode_test svg_test qr_decode_test qr_decode_zxing_test
         COMMAND ${CMAKE_CTEST_COMMAND} --test-dir ${CMAKE_BINARY_DIR} --output-on-failure --verbose
         COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/coverage
         COMMAND ${GCOVR_EXECUTABLE} -r ${COVERAGE_ROOT}
@@ -242,6 +316,7 @@ if(ENABLE_COVERAGE)
             --filter src/.*
             --exclude .*bip39_words.*
             --exclude .*slip39_words.*
+            --exclude .*cpp_psram_operators.*
             --html-details ${CMAKE_BINARY_DIR}/coverage/index.html
             --xml ${CMAKE_BINARY_DIR}/coverage/coverage.xml
             --print-summary
