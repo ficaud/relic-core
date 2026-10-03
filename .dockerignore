@@ -11,6 +11,9 @@
 .gitignore
 .github
 
+# Personal overlay (separate private repo, not part of the minimal image)
+my-env/
+
 # Build artifacts
 build/
 *.bin
