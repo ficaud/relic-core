@@ -7,7 +7,7 @@ config WIFI_SAMPLE_AP_SSID
 	string "SSID of soft AP"
 	help
 	  SSID of the soft AP created by the sample.
-	  Fox example: "SOFT-AP"
+	  For example: "SOFT-AP"
 
 config WIFI_SAMPLE_SSID
 	string "SSID of the target AP"

@@ -569,7 +569,7 @@ const char *handler_qr_decode_stream(const struct http_request *req, const char 
 
     LOG_INF("QR decode: body %ld bytes (%zu pixels)", content_len, pixels);
 
-    /* Allocate quirc and stream the body straight into its image buffer. */
+    /* Allocate the decoder context and stream the body straight into its image buffer. */
     struct qr_decode_ctx *ctx = qr_decode_begin((int)w, (int)h, QR_DECODE_BPP_GRAY);
     if (ctx == NULL)
     {

@@ -63,7 +63,7 @@ QR_INC = -I$(RELIC_QR_DIR) -I$(RELIC_SVG_DIR)
 QR_OUT_WASM = $(OUT_DIR)/qr.wasm
 QR_OUT_JS = $(OUT_DIR)/qr.js
 
-# ── Compression codec WASM (share base32 + BIP-39) ──
+# ── Compression codec WASM (share base32 + BIP-39 / SLIP-39) ──
 
 COMPRESSION_WASM_FLAGS = \
 	-s MODULARIZE=1 \
@@ -96,8 +96,8 @@ QR_DECODE_WASM_FLAGS = \
 	--no-entry
 
 # ZXing-cpp QR-only reader subset (C++20), mirroring the firmware's
-# CMakeLists.txt. The wrapper (demo) implements the same qr_decode_* interface
-# as the quirc backend via src/qrcode/zxing/qr_decode_zxing.cpp.
+# CMakeLists.txt. The wrapper (demo) exposes the same qr_decode_* interface,
+# backed here by ZXing-cpp via src/qrcode/zxing/qr_decode_zxing.cpp.
 RELIC_QR_DECODE_DIR = ../src/qrcode
 ZXING_DIR = ../external/zxing-cpp/core/src
 QR_DECODE_SRC = src/qr_decode_wasm.c \

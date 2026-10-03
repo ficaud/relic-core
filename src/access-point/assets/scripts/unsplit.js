@@ -304,8 +304,9 @@
     /* ── QR decode ──
        The embedded firmware replaces the placeholders with per-board values:
        - __QR_MAX_DIM__: max grayscale dimension accepted by the device
-         (224 on ESP32-S3, 192 on the classic ESP32). In the WASM demo the
-         placeholder stays, so parseInt() yields NaN and we use 224.
+         (224 on ESP32-S3, 640 on the XIAO ESP32S3, 192 on the classic ESP32).
+         In the WASM demo the placeholder stays, so parseInt() yields NaN and
+         we use 224.
        - __QR_DECODE_SERVER__: 1 when the ESP32 decodes (ESP32-S3), 0 when
          the page must decode locally (classic ESP32 / WASM demo).
        Local decoding uses WASM ZXing (demo) or jsQR (classic ESP32). ── */

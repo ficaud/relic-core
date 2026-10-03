@@ -103,7 +103,7 @@ def main():
     parser.add_argument('--qr-max-dim', type=int, default=224,
                         help='Maximum QR decode image dimension (px) baked into the page.')
     parser.add_argument('--qr-decode-server', type=int, default=1, choices=(0, 1),
-                        help='1 if the device decodes QR codes (quirc), 0 if the page decodes locally (jsQR).')
+                        help='1 if the device decodes QR codes (quirc or ZXing), 0 if the page decodes locally (jsQR).')
     parser.add_argument('assets_dir', help='Directory containing the HTML/CSS/JS assets.')
     parser.add_argument('output', help='Output C header path.')
     args = parser.parse_args()

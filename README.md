@@ -45,7 +45,7 @@ The firmware is built on the following C libraries:
 |---|---|---|---|
 | [Zephyr RTOS](https://github.com/zephyrproject-rtos/zephyr) | v4.4.2 | RTOS kernel, networking, Wi-Fi, logging, RNG. Its modules (`hal_espressif`, `mbedtls`, `tf-psa-crypto`, `zcbor`, `picolibc`, `mcuboot`) are fetched via `west update` — see `west.yml`. | `west.yml` |
 | [quirc](https://github.com/ficaud/relic-quirc) (relic-quirc fork) | v1.2 | On-device QR decoding (`src/qrcode/quirc/qr_decode_quirc.c`, ESP32-S3 only via `CONFIG_RELIC_QR_DECODE_SERVER`) | git submodule `external/quirc` |
-| [zxing-cpp](https://github.com/ficaud/relic-zxing-cpp) (relic-zxing-cpp fork)  | v3.1.1 | On-device QR decoding (`src/qrcode/zxing/qr_decode_zxing.c`, XIAO32 only via `CONFIG_RELIC_QR_DECODE_SERVER`) | git submodule `external/zxing-cpp` |
+| [zxing-cpp](https://github.com/ficaud/relic-zxing-cpp) (relic-zxing-cpp fork)  | v3.1.1 | On-device QR decoding (`src/qrcode/zxing/qr_decode_zxing.cpp`, XIAO32 only via `CONFIG_RELIC_QR_DECODE_SERVER`) | git submodule `external/zxing-cpp` |
 | [Nayuki QR-Code-generator](https://github.com/nayuki/QR-Code-generator) | — | QR generation (`src/qrcode/qr_encode.c`, reduced build: alphanumeric / ECC LOW only, MIT) | vendored in `src/qrcode/qr_encode.c` |
 
 Zephyr module versions are pinned by the Zephyr v4.4.2 manifest and resolved with `west update`. `external/sss` (dsprenkels/sss) is not a firmware dependency — it is used only to cross-validate the unit tests.
@@ -61,7 +61,7 @@ Zephyr module versions are pinned by the Zephyr v4.4.2 manifest and resolved wit
 
 ## How to connect to captive portal
 
-Once the ESP32 is loaded with the firmware, it will create a Wi-Fi access point named `Relic-XXXX`, where `XXXX` is the first 4 characters of the ESP32 MAC address.
+Once the ESP32 is loaded with the firmware, it will create a Wi-Fi access point named `Relic-XXXX`, where `XXXX` is the last 4 hex digits of the ESP32 MAC address.
 
 You can then join the network in one of two ways:
 
@@ -74,15 +74,15 @@ You can then join the network in one of two ways:
 <br>
 </div>
 
-2. **Manually connect** by searching for the SSID `Relic-XXXX` on your router and connecting with the password derived from your device's MAC address (also shown on below the SSID after flashing the device).
+2. **Manually connect** by searching for the SSID `Relic-XXXX` in your Wi-Fi list and connecting with the password derived from your device's MAC address (also shown below the SSID after flashing the device).
 
 ## SSS settings
 
 The current implementation uses GF(2^8) finite fields and the Shamir's Secret Sharing algorithm with a threshold of 3 for 5 shares generated.
 
-Maybe in the future, we will be able to set the threshold dynamically. That's not the was right now.
+Maybe in the future, we will be able to set the threshold dynamically. That's not the case right now.
 
-You also have the possibility to generate QR codes with the shares (in the split page), and scan QR codes back to reconstruct the secret in the unpsplit page.
+You also have the possibility to generate QR codes with the shares (in the split page), and scan QR codes back to reconstruct the secret in the unsplit page.
 
 <div align="center">
 <img src="doc/img/split.PNG" width="250" alt="split tab from relic core">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;

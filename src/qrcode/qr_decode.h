@@ -22,7 +22,8 @@ extern "C"
 /** Maximum image dimension (px) accepted for decoding. Kept small so the
  *  image buffer plus the decoder's internal state fit in the device's RAM
  *  budget. The firmware build overrides this with the per-board Kconfig value
- *  RELIC_QR_DECODE_MAX_DIM (224 on ESP32-S3, 192 on the classic ESP32).
+ *  RELIC_QR_DECODE_MAX_DIM (224 on ESP32-S3, 640 on the XIAO ESP32S3 with
+ *  PSRAM, 192 on the classic ESP32).
  *  WASM demo and native tests keep the 224 default. */
 #ifndef QR_DECODE_MAX_DIM
 #define QR_DECODE_MAX_DIM (224)
