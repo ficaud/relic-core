@@ -163,12 +163,12 @@ RUN echo "Installing Emscripten SDK..." \
     && echo "Emscripten installed"
 
 # ------------------------------------------------------------------
-# 5. Zephyr RTOS (v4.4.2)
+# 5. Zephyr RTOS (v4.5.0)
 # ------------------------------------------------------------------
-# Pre-downloads the Zephyr RTOS source at version v4.4.2 into the image so
+# Pre-downloads the Zephyr RTOS source at version v4.5.0 into the image so
 # the framework is available at build time.  The west manifest (west.yml)
 # pins the same revision, keeping the workspace consistent.
-ENV ZEPHYR_VERSION=v4.4.2
+ENV ZEPHYR_VERSION=v4.5.0
 ENV ZEPHYR_BASE=/opt/zephyr
 
 RUN echo "Cloning Zephyr RTOS ${ZEPHYR_VERSION}..." \
@@ -182,7 +182,7 @@ RUN echo "Cloning Zephyr RTOS ${ZEPHYR_VERSION}..." \
 # 6. Environment setup
 # ------------------------------------------------------------------
 ENV ZEPHYR_TOOLCHAIN_VARIANT=zephyr
-# Zephyr RTOS was pre-downloaded into the image at /opt/zephyr (v4.4.2).
+# Zephyr RTOS was pre-downloaded into the image at /opt/zephyr (v4.5.0).
 ENV ZEPHYR_BASE=/opt/zephyr
 
 # ------------------------------------------------------------------

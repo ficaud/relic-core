@@ -16,7 +16,7 @@ manifest:
   projects:
     - name: zephyr
       remote: zephyrproject
-      revision: v4.4.2
+      revision: v4.5.0
       west-commands: scripts/west-commands.yml
       import:
         name-allowlist:
