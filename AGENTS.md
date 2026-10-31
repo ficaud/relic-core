@@ -15,7 +15,7 @@ Components*) is a firmware for ESP32 boards (and more) that implements **Shamir'
 Sharing (SSS)** to split and recover secrets (passwords, private keys, bitcoin
 seed phrases, etc.) in a secure, offline way. One specific particularity of Relic Core is that it enables user to split and recover secrets using Qr codes.
 
-- **Framework**: Zephyr RTOS **v4.4.2**
+- **Framework**: Zephyr RTOS **v4.5.0**
 - **Language**: C (firmware), C++ (unit tests)
 - **Target boards**: ESP32-S3-DevKitC-1, ESP32-DevKit-V1 (WROOM-32), Seeed XIAO ESP32S3, Raspberry Pi (through docker)
 - **License**: GPL-3.0-or-later
@@ -318,8 +318,19 @@ ctest --test-dir build/tests --verbose      # verbose
   `thread_local` → `static`; `LocalGrid.cpp` uses the same patched
   `ZX_THREAD_LOCAL` macro. Exceptions on Xtensa are not covered by Zephyr CI —
   validate with a `try/throw` smoke test on a new toolchain/revision.
-- **Versioning**: README states Zephyr v4.4.2; do not trust older docs that say
-  v4.4.1.
+- **Versioning**: README states Zephyr v4.5.0; do not trust older docs that say
+  v4.4.x or earlier.
+- **Classic ESP32 static DRAM (WROOM)**: on `doit_esp32_devkit_v1`, `.noinit`
+  (thread stacks + net packet/buf pools + `tcp_conns` slab) is spilled into
+  `dram1_0_seg`, a tiny 93 KB bank — `doit_esp32_devkit_v1_esp32_procpu.conf`
+  trims it accordingly. dram0_0_seg holds data + bss + the 16 KB system heap
+  and has under 25 KB free at link time (it doubles as the libc malloc arena),
+  so `.noinit` cannot be moved back there (`ESP32_REGION_1_NOINIT` must stay
+  enabled). Wi-Fi selects `NET_PKT_LARGE_DEFAULTS`, so the default
+  `NET_BUF_RX/TX_COUNT` is 36 (not 16), and the TCP `tcp_conns` slab is sized
+  by `CONFIG_NET_MAX_CONTEXTS` (not `CONFIG_NET_MAX_CONN`). Keep an eye on
+  the `dram1_0_seg` headroom in `zephyr.map` after every Zephyr update — the
+  margin was ~24 KB as of v4.5.0.
 - **Nested west repos + dubious ownership**: west clones repos at arbitrary
   depths under the workspace (`zephyr/`, `bootloader/mcuboot/`, `modules/…`,
   `my-env/`). On macOS Docker Desktop the workspace mount reports `root:root`,
