@@ -218,7 +218,7 @@ static void derive_wifi_psk(const uint8_t *mac, size_t mac_len, char *out)
 
 static int enable_ap_mode(struct net_if **ap_iface)
 {
-    struct wifi_connect_req_params ap_config;
+    struct wifi_connect_req_params ap_config = {0};
     /* SSID buffer: base SSID + "-" + 4 hex digits of MAC = max 32 chars */
     // Relic-XXXX (10 so we define it to 16 to be safe)
     char ssid_buf[16];
